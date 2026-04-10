@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite build)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npm run build:*)",
+      "Bash(lsof:*)",
+      "Bash(ls:*)",
+      "Bash(supabase --version:*)",
+      "Bash(docker:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\")",
+      "Bash(npm ls:*)"
+    ]
+  }
+}
