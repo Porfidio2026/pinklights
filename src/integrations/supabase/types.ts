@@ -267,6 +267,7 @@ export type Database = {
           hair_colour: string | null
           id: string
           is_available: boolean | null
+          is_banned: boolean | null
           is_featured: boolean | null
           latest_payment: string | null
           latitude: number | null
@@ -294,6 +295,7 @@ export type Database = {
           hair_colour?: string | null
           id?: string
           is_available?: boolean | null
+          is_banned?: boolean | null
           is_featured?: boolean | null
           latest_payment?: string | null
           latitude?: number | null
@@ -321,6 +323,7 @@ export type Database = {
           hair_colour?: string | null
           id?: string
           is_available?: boolean | null
+          is_banned?: boolean | null
           is_featured?: boolean | null
           latest_payment?: string | null
           latitude?: number | null
