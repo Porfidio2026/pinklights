@@ -60,7 +60,7 @@ export const HeartfolioLogo = () => {
       type="button"
     >
       <img 
-        src="/lovable-uploads/737ebfb2-027b-48ad-bff0-23b3eebd1979.png"
+        src="/uploads/737ebfb2-027b-48ad-bff0-23b3eebd1979.png"
         alt="Pinklights Logo"
         className="h-8 w-auto"
       />

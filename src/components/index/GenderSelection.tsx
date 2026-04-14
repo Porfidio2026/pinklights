@@ -13,13 +13,13 @@ const genders = [
   {
     label: 'Female',
     value: 'Female' as GenderType,
-    image: '/lovable-uploads/4d41358f-07c1-4783-be77-49f7503654e7.png',
+    image: '/uploads/4d41358f-07c1-4783-be77-49f7503654e7.png',
     alt: 'Female',
   },
   {
     label: 'Trans',
     value: 'Trans' as GenderType,
-    image: '/lovable-uploads/c1b04e90-f5e6-4b67-ab69-1f73258dbfd9.png',
+    image: '/uploads/c1b04e90-f5e6-4b67-ab69-1f73258dbfd9.png',
     alt: 'Transgender',
   },
 ];
