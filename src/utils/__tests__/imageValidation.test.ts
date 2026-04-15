@@ -29,15 +29,20 @@ describe('validateImageFile', () => {
     expect(result.error).toContain('image/gif');
   });
 
-  it('rejects files over 5MB', () => {
-    const file = createFile('photo.jpg', 6 * 1024 * 1024, 'image/jpeg');
+  it('rejects files over 50MB', () => {
+    const file = createFile('photo.jpg', 51 * 1024 * 1024, 'image/jpeg');
     const result = validateImageFile(file);
     expect(result.valid).toBe(false);
     expect(result.error).toContain('too large');
   });
 
-  it('accepts files exactly 5MB', () => {
-    const file = createFile('photo.jpg', 5 * 1024 * 1024, 'image/jpeg');
+  it('accepts files exactly 50MB', () => {
+    const file = createFile('photo.jpg', 50 * 1024 * 1024, 'image/jpeg');
+    expect(validateImageFile(file)).toEqual({ valid: true });
+  });
+
+  it('accepts typical phone photo (12MB)', () => {
+    const file = createFile('photo.jpg', 12 * 1024 * 1024, 'image/jpeg');
     expect(validateImageFile(file)).toEqual({ valid: true });
   });
 });

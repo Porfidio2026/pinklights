@@ -1,6 +1,9 @@
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+// Pre-resize sanity cap. The client-side resize in imageResize.ts shrinks
+// anything reasonable down to ~1200px JPEG before upload, so this only
+// needs to block files large enough to crash the browser on decode.
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export interface ValidationResult {
   valid: boolean;
@@ -19,7 +22,7 @@ export function validateImageFile(file: File): ValidationResult {
     const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
     return {
       valid: false,
-      error: `File is too large (${sizeMB}MB). Maximum size is 5MB.`,
+      error: `File is too large (${sizeMB}MB). Maximum size is 50MB.`,
     };
   }
 
