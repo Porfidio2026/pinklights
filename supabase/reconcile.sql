@@ -26,6 +26,13 @@ alter table public.profiles
 alter table public.admin_users
   add column if not exists role text not null default 'admin';
 
+-- cached_coordinates needs a unique index on address to support
+-- upsert(onConflict: 'address') from coordinatesService.cache().
+-- Using create unique index if not exists keeps this idempotent; the
+-- resulting index doubles as the ON CONFLICT target.
+create unique index if not exists cached_coordinates_address_key
+  on public.cached_coordinates (address);
+
 
 -- =============================================================================
 -- 2. RLS POLICY REFRESH

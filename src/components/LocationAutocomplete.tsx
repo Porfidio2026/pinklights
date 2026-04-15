@@ -1,10 +1,24 @@
-
-import React, { useEffect, useRef, useState } from "react";
-import { Input } from "./ui/input";
+import { useEffect, useRef } from "react";
 import { LocationAutocompleteProps } from "./location/types";
-import { useGoogleMaps } from "./location/useGoogleMaps";
+import { useGoogleMapsPlaces } from "./location/useGoogleMaps";
 import { coordinatesService } from "./location/coordinatesService";
 import { useToast } from "./ui/use-toast";
+import { cn } from "@/lib/utils";
+
+type PlaceAutocompleteElement = HTMLElement & {
+  value?: string;
+  placeholder?: string;
+};
+
+type GmpSelectEvent = Event & {
+  placePrediction: {
+    toPlace: () => {
+      fetchFields: (opts: { fields: string[] }) => Promise<void>;
+      formattedAddress?: string;
+      location?: { lat: () => number; lng: () => number };
+    };
+  };
+};
 
 export const LocationAutocomplete = ({
   value,
@@ -14,110 +28,113 @@ export const LocationAutocomplete = ({
   required,
 }: LocationAutocompleteProps) => {
   const { toast } = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [localValue, setLocalValue] = useState(value);
-  const isUpdatingRef = useRef(false);
-  const userInputRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const elementRef = useRef<PlaceAutocompleteElement | null>(null);
+  const onChangeRef = useRef(onChange);
+  const { loaded, error } = useGoogleMapsPlaces();
 
-  // Only update local value when prop changes and we're not in the middle of an update
   useEffect(() => {
-    if (!isUpdatingRef.current && value !== localValue && !userInputRef.current) {
-      setLocalValue(value);
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to initialize location autocomplete.",
+        variant: "destructive",
+      });
     }
-  }, [value, localValue]);
-
-  const { autocompleteRef, geocoderRef, isLoading } = useGoogleMaps(inputRef);
+  }, [error, toast]);
 
   useEffect(() => {
-    if (!autocompleteRef.current || !window.google?.maps?.places) {
+    if (!loaded || !containerRef.current || elementRef.current) return;
+
+    const places = (window.google?.maps as unknown as {
+      places?: { PlaceAutocompleteElement?: new (opts: Record<string, unknown>) => PlaceAutocompleteElement };
+    })?.places;
+
+    if (!places?.PlaceAutocompleteElement) {
+      toast({
+        title: "Error",
+        description: "Places library did not expose PlaceAutocompleteElement.",
+        variant: "destructive",
+      });
       return;
     }
 
-    const listener = autocompleteRef.current.addListener(
-      "place_changed",
-      async () => {
-        const place = autocompleteRef.current?.getPlace();
-        if (!place?.formatted_address || !place.geometry?.location) {
-          return;
-        }
+    const el = new places.PlaceAutocompleteElement({
+      includedRegionCodes: ["be"],
+    });
+    el.placeholder = placeholder;
+    if (value) el.value = value;
 
-        isUpdatingRef.current = true;
-        userInputRef.current = false;
-        
-        try {
-          const lat = place.geometry.location.lat();
-          const lng = place.geometry.location.lng();
+    const container = containerRef.current;
+    container.appendChild(el);
+    elementRef.current = el;
 
-          // Update local value first
-          setLocalValue(place.formatted_address);
-          // Then notify parent component with the Google-provided formatted address
-          onChange(place.formatted_address);
+    const handleSelect = async (rawEvent: Event) => {
+      const event = rawEvent as GmpSelectEvent;
+      try {
+        const place = event.placePrediction.toPlace();
+        await place.fetchFields({
+          fields: ["displayName", "formattedAddress", "location"],
+        });
 
-          // Store location in localStorage
-          localStorage.setItem('userLocation', JSON.stringify({
-            latitude: lat,
-            longitude: lng
-          }));
+        const formattedAddress = place.formattedAddress;
+        const lat = place.location?.lat();
+        const lng = place.location?.lng();
 
-          // Create a custom event that includes the location data
-          const locationEvent = new CustomEvent('userLocationUpdated', {
-            detail: { latitude: lat, longitude: lng }
-          });
-          
-          // Dispatch the event
-          window.dispatchEvent(locationEvent);
+        if (!formattedAddress || lat == null || lng == null) return;
 
-          await Promise.all([
-            coordinatesService.cache(place.formatted_address, lat, lng),
-            coordinatesService.updateUserProfile(place.formatted_address, lat, lng)
-          ]);
-          
-          toast({
-            title: "Location updated",
-            description: "Your location has been successfully saved.",
-          });
-        } catch (error) {
-          console.error('Failed to update location:', error);
-          toast({
-            title: "Error",
-            description: "Failed to save your location. Please try again.",
-            variant: "destructive",
-          });
-        } finally {
-          isUpdatingRef.current = false;
-        }
-      }
-    );
+        onChangeRef.current(formattedAddress);
 
-    return () => {
-      if (autocompleteRef.current && window.google?.maps?.event) {
-        window.google.maps.event.removeListener(listener);
+        localStorage.setItem(
+          "userLocation",
+          JSON.stringify({ latitude: lat, longitude: lng }),
+        );
+        window.dispatchEvent(
+          new CustomEvent("userLocationUpdated", {
+            detail: { latitude: lat, longitude: lng },
+          }),
+        );
+
+        await Promise.all([
+          coordinatesService.cache(formattedAddress, lat, lng),
+          coordinatesService.updateUserProfile(formattedAddress, lat, lng),
+        ]);
+
+        toast({
+          title: "Location updated",
+          description: "Your location has been successfully saved.",
+        });
+      } catch (err) {
+        console.error("Failed to update location:", err);
+        toast({
+          title: "Error",
+          description: "Failed to save your location. Please try again.",
+          variant: "destructive",
+        });
       }
     };
-  }, [onChange, toast]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    userInputRef.current = true;
-    setLocalValue(newValue);
-    
-    if (!newValue.trim()) {
-      onChange("");
-      userInputRef.current = false;
-    }
-  };
+    el.addEventListener("gmp-select", handleSelect);
+
+    return () => {
+      el.removeEventListener("gmp-select", handleSelect);
+      el.remove();
+      elementRef.current = null;
+    };
+    // Only remount when the API loads for the first time.
+    // onChange is read through a ref; value/placeholder are applied on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   return (
-    <Input
-      ref={inputRef}
-      type="text"
-      value={localValue}
-      onChange={handleInputChange}
-      placeholder={placeholder}
-      className={className}
-      disabled={isLoading}
-      required={required}
-      autoComplete="off"
+    <div
+      ref={containerRef}
+      className={cn("location-autocomplete", className)}
+      data-required={required ? "true" : undefined}
     />
   );
 };
