@@ -252,6 +252,12 @@ create policy "Anyone can insert cached coordinates"
   on public.cached_coordinates for insert
   with check (true);
 
+drop policy if exists "Anyone can update cached coordinates" on public.cached_coordinates;
+create policy "Anyone can update cached coordinates"
+  on public.cached_coordinates for update
+  using (true)
+  with check (true);
+
 
 -- ---- SECRETS ----
 alter table public.secrets enable row level security;
@@ -266,11 +272,15 @@ create policy "Secrets readable by authenticated users"
 -- ---- ADMIN_USERS ----
 alter table public.admin_users enable row level security;
 
+-- IMPORTANT: this policy must NOT subquery admin_users itself, otherwise
+-- any other policy that checks "exists(select 1 from admin_users ...)"
+-- triggers infinite recursion (42P17). A direct equality check avoids it:
+-- admins see their own row, non-admins see nothing.
 drop policy if exists "Admins can view admin_users" on public.admin_users;
 create policy "Admins can view admin_users"
   on public.admin_users for select
   to authenticated
-  using (auth.uid() in (select user_id from public.admin_users));
+  using (user_id = auth.uid());
 
 
 -- ---- CREDITS ----
@@ -366,6 +376,49 @@ create policy "Users can view their own payment sessions"
 
 
 -- ---- STORAGE: profile_pictures bucket ----
+-- Create the bucket if missing. Public so getPublicUrl() returns a URL
+-- anyone can view (profile pictures are shown on public profile pages).
+insert into storage.buckets (id, name, public)
+values ('profile_pictures', 'profile_pictures', true)
+on conflict (id) do nothing;
+
+-- Anyone can read (public bucket).
+drop policy if exists "Profile pictures are publicly readable" on storage.objects;
+create policy "Profile pictures are publicly readable"
+  on storage.objects for select
+  using (bucket_id = 'profile_pictures');
+
+-- Authenticated users can upload to a folder whose first segment
+-- matches their own uid — matches the ${user.id}/${uuid}.${ext} pattern
+-- in UploadProfilePicture.tsx.
+drop policy if exists "Users can upload their own profile pictures" on storage.objects;
+create policy "Users can upload their own profile pictures"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'profile_pictures'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "Users can update their own profile pictures in storage" on storage.objects;
+create policy "Users can update their own profile pictures in storage"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'profile_pictures'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "Users can delete their own profile pictures in storage" on storage.objects;
+create policy "Users can delete their own profile pictures in storage"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'profile_pictures'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- Admins can upload for any user (bulk import, etc.)
 drop policy if exists "Admins can upload any profile pictures" on storage.objects;
 create policy "Admins can upload any profile pictures"
   on storage.objects for insert
@@ -373,6 +426,189 @@ create policy "Admins can upload any profile pictures"
     bucket_id = 'profile_pictures'
     and exists (select 1 from public.admin_users where user_id = auth.uid())
   );
+
+
+-- =============================================================================
+-- 2b. STORAGE SCHEMA UPGRADE (manual apply of Supabase storage migration 0026)
+-- =============================================================================
+-- The remote project was created before Supabase's storage service added the
+-- `level` column and `storage.prefixes` table. Without these, every upload
+-- fails with DatabaseInvalidObjectDefinition.
+-- Verbatim from supabase/storage migrations/tenant/0026-objects-prefixes.sql
+-- plus a no-op backfill and the non-concurrent index. Safe on an empty
+-- storage.objects — backfill is a no-op when there are no rows.
+
+alter table storage.objects add column if not exists level int null;
+
+create or replace function storage.get_level(name text)
+  returns int
+as $func$
+  select array_length(string_to_array(name, '/'), 1);
+$func$ language sql immutable strict;
+
+create table if not exists storage.prefixes (
+  bucket_id text,
+  name text collate "C" not null,
+  level int generated always as (storage.get_level(name)) stored,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  constraint prefixes_bucketId_fkey foreign key (bucket_id) references storage.buckets (id),
+  primary key (bucket_id, level, name)
+);
+
+alter table storage.prefixes enable row level security;
+
+create or replace function storage.get_prefix(name text)
+  returns text
+as $func$
+  select
+    case when strpos(name, '/') > 0
+         then regexp_replace(name, '[\/]{1}[^\/]+\/?$', '')
+         else '' end;
+$func$ language sql immutable strict;
+
+create or replace function storage.get_prefixes(name text)
+  returns text[]
+as $func$
+declare
+  parts text[];
+  prefixes text[];
+  prefix text;
+begin
+  parts := string_to_array(name, '/');
+  prefixes := '{}';
+  for i in 1..array_length(parts, 1) - 1 loop
+    prefix := array_to_string(parts[1:i], '/');
+    prefixes := array_append(prefixes, prefix);
+  end loop;
+  return prefixes;
+end;
+$func$ language plpgsql immutable strict;
+
+create or replace function storage.add_prefixes(_bucket_id text, _name text)
+  returns void
+  security definer
+as $func$
+declare
+  prefixes text[];
+begin
+  prefixes := storage.get_prefixes(_name);
+  if array_length(prefixes, 1) > 0 then
+    insert into storage.prefixes (name, bucket_id)
+    select unnest(prefixes) as name, _bucket_id
+    on conflict do nothing;
+  end if;
+end;
+$func$ language plpgsql volatile;
+
+create or replace function storage.delete_prefix(_bucket_id text, _name text)
+  returns boolean
+  security definer
+as $func$
+begin
+  if exists (
+    select from storage.prefixes
+    where prefixes.bucket_id = _bucket_id
+      and level = storage.get_level(_name) + 1
+      and prefixes.name collate "C" like _name || '/%'
+    limit 1
+  ) or exists (
+    select from storage.objects
+    where objects.bucket_id = _bucket_id
+      and storage.get_level(objects.name) = storage.get_level(_name) + 1
+      and objects.name collate "C" like _name || '/%'
+    limit 1
+  ) then
+    return false;
+  else
+    delete from storage.prefixes
+    where prefixes.bucket_id = _bucket_id
+      and level = storage.get_level(_name)
+      and prefixes.name = _name;
+    return true;
+  end if;
+end;
+$func$ language plpgsql volatile;
+
+create or replace function storage.prefixes_insert_trigger()
+  returns trigger
+as $func$
+begin
+  perform storage.add_prefixes(new.bucket_id, new.name);
+  return new;
+end;
+$func$ language plpgsql volatile;
+
+create or replace function storage.objects_insert_prefix_trigger()
+  returns trigger
+as $func$
+begin
+  perform storage.add_prefixes(new.bucket_id, new.name);
+  new.level := storage.get_level(new.name);
+  return new;
+end;
+$func$ language plpgsql volatile;
+
+create or replace function storage.delete_prefix_hierarchy_trigger()
+  returns trigger
+as $func$
+declare
+  prefix text;
+begin
+  prefix := storage.get_prefix(old.name);
+  if coalesce(prefix, '') != '' then
+    perform storage.delete_prefix(old.bucket_id, prefix);
+  end if;
+  return old;
+end;
+$func$ language plpgsql volatile;
+
+create or replace trigger prefixes_delete_hierarchy
+  after delete on storage.prefixes
+  for each row
+  execute function storage.delete_prefix_hierarchy_trigger();
+
+create or replace trigger objects_insert_create_prefix
+  before insert on storage.objects
+  for each row
+  execute function storage.objects_insert_prefix_trigger();
+
+create or replace trigger objects_update_create_prefix
+  before update on storage.objects
+  for each row
+  when (new.name != old.name)
+  execute function storage.objects_insert_prefix_trigger();
+
+create or replace trigger objects_delete_delete_prefix
+  after delete on storage.objects
+  for each row
+  execute function storage.delete_prefix_hierarchy_trigger();
+
+-- Trigger from 0035 so direct writes to prefixes also cascade
+create or replace trigger prefixes_create_hierarchy
+  before insert on storage.prefixes
+  for each row
+  when (pg_trigger_depth() < 1)
+  execute function storage.prefixes_insert_trigger();
+
+-- Grants
+do $$
+declare
+  anon_role text = coalesce(current_setting('storage.anon_role', true), 'anon');
+  authenticated_role text = coalesce(current_setting('storage.authenticated_role', true), 'authenticated');
+  service_role text = coalesce(current_setting('storage.service_role', true), 'service_role');
+begin
+  execute 'grant all on table storage.prefixes to ' || service_role || ', ' || authenticated_role || ', ' || anon_role;
+end$$;
+
+-- Backfill level for any pre-existing objects (no-op on empty table)
+update storage.objects set level = storage.get_level(name) where level is null;
+
+-- Non-concurrent equivalent of 0031's CREATE INDEX CONCURRENTLY
+-- (safe because storage.objects is empty; avoids CONCURRENTLY which can't
+-- run inside a transaction block in the SQL editor).
+create unique index if not exists objects_bucket_id_level_idx
+  on storage.objects (bucket_id, level, name collate "C");
 
 
 -- =============================================================================
