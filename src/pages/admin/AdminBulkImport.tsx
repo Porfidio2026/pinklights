@@ -101,6 +101,28 @@ function parseCsv(text: string): CsvRow[] {
 }
 
 // ---------------------------------------------------------------------------
+// Geocoding
+// ---------------------------------------------------------------------------
+
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!apiKey || !address.trim()) return null;
+
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}&components=country:BE`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'OK' && data.results?.[0]) {
+      const { lat, lng } = data.results[0].geometry.location;
+      return { lat, lng };
+    }
+  } catch (e) {
+    console.warn('Geocoding failed for:', address, e);
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Normalise phone number for folder matching
 // ---------------------------------------------------------------------------
 
@@ -242,6 +264,17 @@ const AdminBulkImport = () => {
 
         if (insertError || !profile) {
           throw new Error(insertError?.message || 'Failed to insert profile');
+        }
+
+        // 1b. Geocode location → update lat/lng
+        if (row.location) {
+          const coords = await geocodeAddress(row.location);
+          if (coords) {
+            await supabase
+              .from('profiles')
+              .update({ latitude: coords.lat, longitude: coords.lng })
+              .eq('id', profile.id);
+          }
         }
 
         // 2. Upload pictures from ZIP (if available)
