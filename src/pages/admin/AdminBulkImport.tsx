@@ -46,14 +46,33 @@ const WHATSAPP_MESSAGE = 'Hello! Your profile has been created on Pinklights. Yo
 // CSV parser
 // ---------------------------------------------------------------------------
 
+function splitCsvLine(line: string, sep: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"' && (current === '' || inQuotes)) {
+      inQuotes = !inQuotes;
+    } else if (ch === sep && !inQuotes) {
+      fields.push(current.trim().replace(/^["']|["']$/g, ''));
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  fields.push(current.trim().replace(/^["']|["']$/g, ''));
+  return fields;
+}
+
 function parseCsv(text: string): CsvRow[] {
   const lines = text.split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) return [];
 
-  // Parse header to find column indices (flexible naming)
   const headerLine = lines[0];
   const sep = headerLine.includes(';') ? ';' : ',';
-  const headers = headerLine.split(sep).map((h) => h.trim().toLowerCase().replace(/['"]/g, ''));
+  const headers = splitCsvLine(headerLine, sep).map((h) => h.toLowerCase());
 
   const nameIdx = headers.findIndex((h) => h === 'name' || h === 'full_name');
   const descIdx = headers.findIndex((h) => h === 'description' || h === 'about_me' || h === 'bio');
@@ -66,7 +85,7 @@ function parseCsv(text: string): CsvRow[] {
 
   const rows: CsvRow[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(sep).map((c) => c.trim().replace(/^["']|["']$/g, ''));
+    const cols = splitCsvLine(lines[i], sep);
     const phone = cols[phoneIdx]?.trim();
     if (!phone) continue;
 
@@ -171,11 +190,10 @@ const AdminBulkImport = () => {
     if (zip) {
       zip.forEach((relativePath, entry) => {
         if (entry.dir) return;
-        // Expect structure: phone_number/filename.jpg (possibly nested inside a root folder)
+        // Skip macOS resource forks and hidden files
+        if (relativePath.includes('__MACOSX') || relativePath.includes('/._')) return;
         const parts = relativePath.split('/').filter(Boolean);
         if (parts.length < 2) return;
-        // The folder name that matches the phone number could be at any depth
-        // Try matching the second-to-last folder segment as the phone folder
         const folderName = parts[parts.length - 2];
         const normalized = normalizePhone(folderName);
         if (!phoneToFiles.has(normalized)) {
