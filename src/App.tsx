@@ -34,6 +34,7 @@ const EditAds = React.lazy(() => import('./pages/EditAds'));
 const PartnerBilling = React.lazy(() => import('./pages/PartnerBilling'));
 const BuyDayCredits = React.lazy(() => import('./pages/BuyDayCredits'));
 const PaymentSuccess = React.lazy(() => import('./pages/PaymentSuccess'));
+const ClaimProfile = React.lazy(() => import('./pages/ClaimProfile'));
 const Address = React.lazy(() => import('./pages/Address'));
 const PartnerAccountSettings = React.lazy(() => import('./pages/PartnerAccountSettings'));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
@@ -70,6 +71,7 @@ function App() {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/profile/:id" element={<Profile />} />
                 <Route path="/search" element={<SearchResults />} />
+                <Route path="/claim-profile/:id" element={<ClaimProfile />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<TermsOfService />} />
 

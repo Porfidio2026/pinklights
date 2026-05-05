@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Ban, CheckCircle, Star, StarOff, Trash2, Search, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Ban, CheckCircle, Star, StarOff, Trash2, Search, ShieldCheck, ShieldOff, MessageCircle } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -17,7 +17,18 @@ interface Profile {
   payment_exempt: boolean;
   visibility_expires_at: string | null;
   created_at: string;
-  user_id: string;
+  user_id: string | null;
+  phone_number: string | null;
+}
+
+const SITE_URL = window.location.origin;
+
+function getWhatsAppUrl(phone: string, profileId: string) {
+  const cleaned = phone.replace(/[^0-9+]/g, '');
+  const number = cleaned.startsWith('+') ? cleaned.substring(1) : cleaned;
+  const claimUrl = `${SITE_URL}/claim-profile/${profileId}`;
+  const message = `Hello! Your profile has been created on Pinklights. You can claim and manage it here: ${claimUrl}`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 
 function getPaymentStatus(profile: Profile): { label: string; className: string } {
@@ -44,7 +55,7 @@ const AdminProfiles = () => {
     queryFn: async () => {
       let query = supabase
         .from('profiles')
-        .select('id, full_name, location, gender, is_featured, is_banned, payment_exempt, visibility_expires_at, created_at, user_id')
+        .select('id, full_name, location, gender, is_featured, is_banned, payment_exempt, visibility_expires_at, created_at, user_id, phone_number')
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -177,6 +188,22 @@ const AdminProfiles = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
+                          {profile.phone_number && !profile.user_id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              asChild
+                              title="Send WhatsApp invite"
+                            >
+                              <a
+                                href={getWhatsAppUrl(profile.phone_number, profile.id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <MessageCircle className="h-4 w-4 text-emerald-400" />
+                              </a>
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"

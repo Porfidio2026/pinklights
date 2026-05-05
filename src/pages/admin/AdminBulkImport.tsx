@@ -39,8 +39,7 @@ interface ImportResult {
   pictureCount: number;
 }
 
-// WhatsApp message template — content to be filled in later
-const WHATSAPP_MESSAGE = 'Hello! Your profile has been created on Pinklights. You can view and manage it by visiting our platform.';
+const SITE_URL = window.location.origin;
 
 // ---------------------------------------------------------------------------
 // CSV parser
@@ -387,10 +386,12 @@ const AdminBulkImport = () => {
   // WhatsApp link
   // -----------------------------------------------------------------------
 
-  const getWhatsAppUrl = (phone: string) => {
+  const getWhatsAppUrl = (phone: string, profileId: string) => {
     const cleaned = phone.replace(/[^0-9+]/g, '');
     const number = cleaned.startsWith('+') ? cleaned.substring(1) : cleaned;
-    return `https://wa.me/${number}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+    const claimUrl = `${SITE_URL}/claim-profile/${profileId}`;
+    const message = `Hello! Your profile has been created on Pinklights. You can claim and manage it here: ${claimUrl}`;
+    return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
   };
 
   // -----------------------------------------------------------------------
@@ -544,7 +545,7 @@ const AdminBulkImport = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
-                        {result.status === 'success' && (
+                        {result.status === 'success' && result.profileId && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -552,7 +553,7 @@ const AdminBulkImport = () => {
                             title="Send WhatsApp message"
                           >
                             <a
-                              href={getWhatsAppUrl(result.phone_number)}
+                              href={getWhatsAppUrl(result.phone_number, result.profileId)}
                               target="_blank"
                               rel="noopener noreferrer"
                             >

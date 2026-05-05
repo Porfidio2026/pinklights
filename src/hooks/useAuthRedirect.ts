@@ -22,12 +22,40 @@ const checkExistingAccount = async (userType: 'profile' | 'partner', userId: str
   }
 };
 
-const handleNavigation = (
+const tryClaimProfile = async (
+  userId: string,
+  navigate: ReturnType<typeof useNavigate>,
+  toast: ReturnType<typeof useToast>['toast']
+): Promise<boolean> => {
+  const claimId = localStorage.getItem('claimProfileId');
+  if (!claimId) return false;
+
+  localStorage.removeItem('claimProfileId');
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ user_id: userId })
+    .eq('id', claimId)
+    .is('user_id', null);
+
+  if (!error) {
+    toast({ title: 'Profile claimed!', description: 'You can now manage your profile.' });
+    navigate('/home');
+    return true;
+  }
+  return false;
+};
+
+const handleNavigation = async (
   userType: 'profile' | 'partner',
   accountExists: { type: string; exists: boolean },
   navigate: ReturnType<typeof useNavigate>,
-  toast: ReturnType<typeof useToast>['toast']
+  toast: ReturnType<typeof useToast>['toast'],
+  userId: string
 ) => {
+  // Check for pending profile claim
+  if (await tryClaimProfile(userId, navigate, toast)) return;
+
   if (accountExists.type === 'partner') {
     if (accountExists.exists) {
       toast({
@@ -70,7 +98,7 @@ export const useAuthRedirect = (userType: 'profile' | 'partner') => {
         setupSessionTimeout();
 
         const accountExists = await checkExistingAccount(userType, session.user.id);
-        handleNavigation(userType, accountExists, navigate, toast);
+        handleNavigation(userType, accountExists, navigate, toast, session.user.id);
       }
     };
 
