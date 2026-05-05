@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         merchant_key: DITOBANX_MERCHANT_KEY,
         operation: 'purchase',
+        methods: ['card'],
         order: {
           number: orderNumber,
           amount: pkg.amount,
@@ -104,6 +105,10 @@ Deno.serve(async (req) => {
         },
         success_url: `${SITE_URL}/payment-success?order=${orderNumber}`,
         cancel_url: `${SITE_URL}/buy-credits`,
+        customer: {
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Customer',
+          email: user.email || '',
+        },
         hash: hash,
       }),
     });
