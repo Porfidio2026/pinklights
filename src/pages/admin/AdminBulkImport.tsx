@@ -277,6 +277,25 @@ const AdminBulkImport = () => {
           }
         }
 
+        // 1c. Set 24/7 availability
+        const availabilityRows = [];
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        for (const day of days) {
+          for (let h = 0; h < 24; h++) {
+            availabilityRows.push({
+              profile_id: profile.id,
+              day_of_week: day,
+              hour: `${h.toString().padStart(2, '0')}:00`,
+            });
+          }
+        }
+        const { error: availError } = await supabase
+          .from('availabilities')
+          .insert(availabilityRows);
+        if (availError) {
+          console.warn('Failed to set availabilities:', availError.message);
+        }
+
         // 2. Upload pictures from ZIP (if available)
         const normalizedPhone = normalizePhone(row.phone_number);
         const imageFiles = phoneToFiles.get(normalizedPhone) || [];
