@@ -57,21 +57,25 @@ const GenderSelection: React.FC<GenderSelectionProps> = ({
         {/* Gender cards */}
         <div className="flex gap-5 justify-center">
           {genders.map((gender, index) => {
-            const isHovered = hoveredIndex === index;
+            const isDisabled = gender.value === 'Female';
+            const isHovered = !isDisabled && hoveredIndex === index;
             return (
               <button
                 key={gender.value}
-                onClick={() => handleSelect(gender.value)}
-                onMouseEnter={() => setHoveredIndex(index)}
+                onClick={() => !isDisabled && handleSelect(gender.value)}
+                onMouseEnter={() => !isDisabled && setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
+                disabled={isDisabled}
                 className={`
-                  group relative flex flex-col items-center justify-center gap-4
+                  group relative flex flex-col items-center justify-center gap-3
                   w-36 h-44 rounded-2xl border
                   transition-all duration-300 ease-out
                   opacity-0 animate-slide-up
-                  ${isHovered
-                    ? 'bg-pink-100 border-pink-300 pink-glow scale-[1.03]'
-                    : 'bg-card/50 border-white/[0.06] hover:bg-card/80'
+                  ${isDisabled
+                    ? 'bg-card/30 border-white/[0.04] cursor-not-allowed'
+                    : isHovered
+                      ? 'bg-pink-100 border-pink-300 pink-glow scale-[1.03]'
+                      : 'bg-card/50 border-white/[0.06] hover:bg-card/80'
                   }
                 `}
                 style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'forwards' }}
@@ -81,9 +85,11 @@ const GenderSelection: React.FC<GenderSelectionProps> = ({
                 <div className={`
                   flex items-center justify-center w-16 h-16 rounded-xl
                   transition-all duration-300
-                  ${isHovered
-                    ? 'gradient-pink shadow-lg'
-                    : 'bg-white/[0.04]'
+                  ${isDisabled
+                    ? 'bg-white/[0.02]'
+                    : isHovered
+                      ? 'gradient-pink shadow-lg'
+                      : 'bg-white/[0.04]'
                   }
                 `}>
                   <img
@@ -91,7 +97,12 @@ const GenderSelection: React.FC<GenderSelectionProps> = ({
                     alt={gender.alt}
                     className={`
                       w-9 h-9 object-contain transition-all duration-300
-                      ${isHovered ? 'brightness-0 invert scale-110' : 'brightness-0 invert opacity-60 group-hover:opacity-90'}
+                      ${isDisabled
+                        ? 'brightness-0 invert opacity-25'
+                        : isHovered
+                          ? 'brightness-0 invert scale-110'
+                          : 'brightness-0 invert opacity-60 group-hover:opacity-90'
+                      }
                     `}
                   />
                 </div>
@@ -100,17 +111,31 @@ const GenderSelection: React.FC<GenderSelectionProps> = ({
                 <span className={`
                   font-semibold font-display text-[15px] tracking-wide
                   transition-colors duration-300
-                  ${isHovered ? 'text-primary' : 'text-foreground/80 group-hover:text-foreground'}
+                  ${isDisabled
+                    ? 'text-foreground/30'
+                    : isHovered
+                      ? 'text-primary'
+                      : 'text-foreground/80 group-hover:text-foreground'
+                  }
                 `}>
                   {gender.label}
                 </span>
 
+                {/* Coming soon badge */}
+                {isDisabled && (
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">
+                    Coming soon
+                  </span>
+                )}
+
                 {/* Active indicator dot */}
-                <div className={`
-                  absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full
-                  transition-all duration-300
-                  ${isHovered ? 'bg-primary scale-100 opacity-100' : 'bg-primary scale-0 opacity-0'}
-                `} />
+                {!isDisabled && (
+                  <div className={`
+                    absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full
+                    transition-all duration-300
+                    ${isHovered ? 'bg-primary scale-100 opacity-100' : 'bg-primary scale-0 opacity-0'}
+                  `} />
+                )}
               </button>
             );
           })}

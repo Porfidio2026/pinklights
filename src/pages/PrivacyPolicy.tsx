@@ -31,7 +31,7 @@ const PrivacyPolicy = () => {
           <p>We retain your data for as long as your account is active. Upon deletion of your account, your personal data will be removed within 30 days.</p>
 
           <h2 className="text-xl font-semibold mt-6 mb-3">8. Contact</h2>
-          <p>For privacy-related inquiries, please contact us through the platform or email our data protection officer.</p>
+          <p>For privacy-related inquiries, please contact us via WhatsApp at <a href="https://wa.me/32478026479" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">+32 478 02 64 79</a> or email us at <a href="mailto:support@pink-lights.be" className="text-primary hover:underline">support@pink-lights.be</a>.</p>
         </Card>
       </div>
     </div>

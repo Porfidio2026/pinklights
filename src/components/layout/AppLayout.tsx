@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Header from '../navigation/Header';
+import Footer from './Footer';
 import BottomNav from '../navigation/BottomNav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/lib/supabase';
@@ -49,6 +50,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <main className={isMobile && isAuthenticated ? 'pb-20' : ''}>
         {children}
       </main>
+      {!(isMobile && isAuthenticated) && <Footer />}
       <BottomNav userType={userType} isAuthenticated={isAuthenticated} />
     </div>
   );
