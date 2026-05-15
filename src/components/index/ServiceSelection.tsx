@@ -17,7 +17,7 @@ const services = [
     description: 'Exclusive in-location experiences',
   },
   {
-    name: 'Out-Call',
+    name: 'Escort',
     value: 'outcall' as ServiceType,
     icon: Phone,
     description: 'At your preferred location',
@@ -65,20 +65,24 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ setSelectedService,
         <div className="grid grid-cols-1 gap-3">
           {services.map((service, index) => {
             const Icon = service.icon;
-            const isHovered = hoveredIndex === index;
+            const isDisabled = service.value === 'soft' || service.value === 'ropes';
+            const isHovered = !isDisabled && hoveredIndex === index;
             return (
               <button
                 key={service.value}
-                onClick={() => handleSelect(service.value)}
-                onMouseEnter={() => setHoveredIndex(index)}
+                onClick={() => !isDisabled && handleSelect(service.value)}
+                onMouseEnter={() => !isDisabled && setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
+                disabled={isDisabled}
                 className={`
                   group relative flex items-center gap-4 w-full p-4 rounded-2xl
                   border transition-all duration-300 ease-out text-left
                   opacity-0 animate-slide-up
-                  ${isHovered
-                    ? 'bg-pink-100 border-pink-300 pink-glow scale-[1.02]'
-                    : 'bg-card/50 border-white/[0.06] hover:bg-card/80'
+                  ${isDisabled
+                    ? 'bg-card/30 border-white/[0.04] cursor-not-allowed'
+                    : isHovered
+                      ? 'bg-pink-100 border-pink-300 pink-glow scale-[1.02]'
+                      : 'bg-card/50 border-white/[0.06] hover:bg-card/80'
                   }
                 `}
                 style={{ animationDelay: `${index * 0.07}s`, animationFillMode: 'forwards' }}
@@ -88,9 +92,11 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ setSelectedService,
                 <div className={`
                   flex items-center justify-center w-12 h-12 rounded-xl shrink-0
                   transition-all duration-300
-                  ${isHovered
-                    ? 'gradient-pink text-white shadow-lg'
-                    : 'bg-white/[0.04] text-muted-foreground group-hover:text-primary'
+                  ${isDisabled
+                    ? 'bg-white/[0.02] text-muted-foreground/25'
+                    : isHovered
+                      ? 'gradient-pink text-white shadow-lg'
+                      : 'bg-white/[0.04] text-muted-foreground group-hover:text-primary'
                   }
                 `}>
                   <Icon className="w-5 h-5" />
@@ -98,23 +104,29 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ setSelectedService,
 
                 {/* Text */}
                 <div className="flex-1 min-w-0">
-                  <div className={`font-semibold font-display text-[15px] transition-colors duration-300 ${isHovered ? 'text-foreground' : 'text-foreground/90'}`}>
+                  <div className={`font-semibold font-display text-[15px] transition-colors duration-300 ${isDisabled ? 'text-foreground/30' : isHovered ? 'text-foreground' : 'text-foreground/90'}`}>
                     {service.name}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
+                  <div className={`text-xs mt-0.5 ${isDisabled ? 'text-muted-foreground/30' : 'text-muted-foreground'}`}>
                     {service.description}
                   </div>
                 </div>
 
-                {/* Arrow indicator */}
-                <div className={`
-                  text-muted-foreground transition-all duration-300 shrink-0
-                  ${isHovered ? 'translate-x-0.5 text-primary' : ''}
-                `}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-40 group-hover:opacity-100 transition-opacity">
-                    <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+                {/* Coming soon / Arrow */}
+                {isDisabled ? (
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 shrink-0">
+                    Coming soon
+                  </span>
+                ) : (
+                  <div className={`
+                    text-muted-foreground transition-all duration-300 shrink-0
+                    ${isHovered ? 'translate-x-0.5 text-primary' : ''}
+                  `}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-40 group-hover:opacity-100 transition-opacity">
+                      <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                )}
               </button>
             );
           })}
