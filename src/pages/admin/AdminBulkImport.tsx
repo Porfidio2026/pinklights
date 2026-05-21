@@ -28,6 +28,7 @@ interface CsvRow {
   description: string;
   location: string;
   phone_number: string;
+  gender: string;
 }
 
 interface ImportResult {
@@ -77,6 +78,7 @@ function parseCsv(text: string): CsvRow[] {
   const descIdx = headers.findIndex((h) => h === 'description' || h === 'about_me' || h === 'bio');
   const locIdx = headers.findIndex((h) => h === 'location' || h === 'city' || h === 'address');
   const phoneIdx = headers.findIndex((h) => h.includes('phone') || h === 'tel' || h === 'whatsapp');
+  const genderIdx = headers.findIndex((h) => h === 'gender' || h === 'sex' || h === 'type');
 
   if (nameIdx === -1 || phoneIdx === -1) {
     throw new Error('CSV must have at least "name" and "phone_number" columns');
@@ -88,11 +90,15 @@ function parseCsv(text: string): CsvRow[] {
     const phone = cols[phoneIdx]?.trim();
     if (!phone) continue;
 
+    const rawGender = genderIdx >= 0 ? (cols[genderIdx] || '').trim().toLowerCase() : '';
+    const gender = rawGender === 'trans' ? 'Trans' : 'Female';
+
     rows.push({
       name: cols[nameIdx] || '',
       description: descIdx >= 0 ? cols[descIdx] || '' : '',
       location: locIdx >= 0 ? cols[locIdx] || '' : '',
       phone_number: phone,
+      gender,
     });
   }
 
@@ -252,7 +258,7 @@ const AdminBulkImport = () => {
             about_me: row.description || null,
             location: row.location || null,
             phone_number: row.phone_number,
-            gender: 'Female',
+            gender: row.gender,
             service_type: 'private',
             is_available: true,
             availability_status: 'available',
