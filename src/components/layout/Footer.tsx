@@ -16,7 +16,7 @@ const Footer = () => {
               className="h-6 w-auto"
             />
             <span className="text-sm font-semibold font-display tracking-tight">
-              <span className="text-gradient-pink">Pink</span><span className="text-foreground">lights</span>
+              <span className="text-gradient-pink">Pink</span><span className="text-foreground">lights</span><span className="text-white">.BE</span>
             </span>
           </div>
 
