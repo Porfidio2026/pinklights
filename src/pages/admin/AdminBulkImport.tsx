@@ -449,7 +449,7 @@ const AdminBulkImport = () => {
           <Input
             ref={zipInputRef}
             type="file"
-            accept=".zip"
+            accept=".zip,application/zip,application/x-zip-compressed,application/octet-stream"
             onChange={handleZipSelect}
             disabled={isRunning}
           />
