@@ -119,7 +119,7 @@ const Header = () => {
             className="h-8 w-auto"
           />
           <span className="text-xl font-bold font-display tracking-tight">
-            <span className="text-gradient-pink">Pink</span><span className="text-foreground">lights</span><span className="text-white">.BE</span>
+            <span className="text-gradient-pink">Pink</span><span className="text-foreground">lights</span><span className="text-white text-[0.9em]">.be</span>
           </span>
         </button>
 
