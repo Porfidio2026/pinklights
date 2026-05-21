@@ -93,7 +93,7 @@ const ClaimProfile = () => {
   const handleSignUp = () => {
     // Store claim intent so we can pick it up after auth
     localStorage.setItem('claimProfileId', id || '');
-    navigate('/auth');
+    navigate('/auth?view=sign_up');
   };
 
   const handleClaimIfLoggedIn = async () => {

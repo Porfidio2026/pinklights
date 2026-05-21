@@ -4,7 +4,11 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const ProfileAuthForm = () => {
+interface ProfileAuthFormProps {
+  defaultView?: 'sign_in' | 'sign_up';
+}
+
+const ProfileAuthForm = ({ defaultView = 'sign_in' }: ProfileAuthFormProps) => {
   return (
     <Card className="bg-card/80 backdrop-blur-xl rounded-lg border border-border">
       <CardHeader>
@@ -55,6 +59,7 @@ const ProfileAuthForm = () => {
             },
           }}
           theme="default"
+          view={defaultView}
           providers={['google']}
           redirectTo={`${window.location.origin}/auth`}
         />
