@@ -418,7 +418,7 @@ const AdminBulkImport = () => {
     const cleaned = phone.replace(/[^0-9+]/g, '');
     const number = cleaned.startsWith('+') ? cleaned.substring(1) : cleaned;
     const claimUrl = `${SITE_URL}/claim-profile/${profileId}`;
-    const message = `Hello! Your profile has been created on Pinklights. You can claim and manage it here: ${claimUrl}`;
+    const message = `New in Belgium: www.Pink-Lights.be\n\nWe are proud to introduce Pink-Lights.be — the 2nd largest advertising platform in Belgium for private and escort website 💖\n\n✔️ Modern and professional website\n✔️ More visibility & new clients\n✔️ Easy profile setup\n✔️ 100% discreet\n\n🎁 For a limited time, profiles can be published completely FREE!\n\nTake your chance now and become one of the first profiles on www.pink-lights.be\n\n👉 Interested? ${claimUrl}`;
     return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
   };
 
