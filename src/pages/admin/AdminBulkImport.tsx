@@ -66,8 +66,30 @@ function splitCsvLine(line: string, sep: string): string[] {
   return fields;
 }
 
+function splitCsvRows(text: string): string[] {
+  const rows: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      current += ch;
+    } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+      if (ch === '\r' && text[i + 1] === '\n') i++; // skip \r\n
+      if (current.trim()) rows.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) rows.push(current);
+  return rows;
+}
+
 function parseCsv(text: string): CsvRow[] {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim());
+  const lines = splitCsvRows(text);
   if (lines.length < 2) return [];
 
   const headerLine = lines[0];
