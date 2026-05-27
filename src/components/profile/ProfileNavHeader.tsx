@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { WhatsAppButton } from '@/components/profile/WhatsAppButton';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface ProfileNavHeaderProps {
   profile: {
@@ -18,18 +18,12 @@ interface ProfileNavHeaderProps {
 
 export const ProfileNavHeader = ({ profile }: ProfileNavHeaderProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleBackToSearchResults = () => {
-    // Check if we came from search results page
-    const cameFromSearch = location.state?.fromSearch;
-    
-    if (cameFromSearch) {
-      // Use the browser's history to go back
+    if (window.history.length > 1) {
       navigate(-1);
     } else {
-      // If not from search, go to step 3 of the index page
-      navigate('/', { state: { startAtStep: 3 } });
+      navigate('/?step=3');
     }
   };
 
