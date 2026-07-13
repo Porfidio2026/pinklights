@@ -47,6 +47,7 @@ const AdminReports = React.lazy(() => import('./pages/admin/AdminReports'));
 const AdminUsers = React.lazy(() => import('./pages/admin/AdminUsers'));
 const AdminSettings = React.lazy(() => import('./pages/admin/AdminSettings'));
 const AdminBulkImport = React.lazy(() => import('./pages/admin/AdminBulkImport'));
+const AdminCreateProfile = React.lazy(() => import('./pages/admin/AdminCreateProfile'));
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ function App() {
                   <Route path="profiles" element={<AdminProfiles />} />
                   <Route path="reports" element={<AdminReports />} />
                   <Route path="users" element={<AdminUsers />} />
+                  <Route path="create-profile" element={<AdminCreateProfile />} />
                   <Route path="bulk-import" element={<AdminBulkImport />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>

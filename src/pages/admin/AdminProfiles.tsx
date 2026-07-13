@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Ban, CheckCircle, Star, StarOff, Trash2, Search, ShieldCheck, ShieldOff, MessageCircle } from 'lucide-react';
+import { Ban, CheckCircle, Star, StarOff, Trash2, Search, ShieldCheck, ShieldOff, MessageCircle, Loader2 } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -21,15 +21,8 @@ interface Profile {
   phone_number: string | null;
 }
 
-const SITE_URL = window.location.origin;
-
-function getWhatsAppUrl(phone: string, profileId: string) {
-  const cleaned = phone.replace(/[^0-9+]/g, '');
-  const number = cleaned.startsWith('+') ? cleaned.substring(1) : cleaned;
-  const claimUrl = `${SITE_URL}/claim-profile/${profileId}`;
-  const message = `New in Belgium: www.Pink-Lights.be\n\nWe are proud to introduce Pink-Lights.be — the 2nd largest advertising platform in Belgium for private and escort website 💖\n\n✔️ Modern and professional website\n✔️ More visibility & new clients\n✔️ Easy profile setup\n✔️ 100% discreet\n\n🎁 For a limited time, profiles can be published completely FREE!\n\nTake your chance now and become one of the first profiles on www.pink-lights.be\n\n👉 Interested? ${claimUrl}`;
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
-}
+const WHATSAPP_INVITE_MESSAGE = (name: string, magicLink: string) =>
+  `Hi ${name}! Your profile on Pinklights is ready. Click this link to access and manage your account: ${magicLink}`;
 
 function getPaymentStatus(profile: Profile): { label: string; className: string } {
   if (profile.payment_exempt) {
@@ -49,6 +42,7 @@ const AdminProfiles = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [sendingInvite, setSendingInvite] = useState<string | null>(null);
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ['admin-profiles', search],
@@ -125,6 +119,42 @@ const AdminProfiles = () => {
     },
   });
 
+  const sendWhatsAppInvite = async (profile: Profile) => {
+    if (!profile.phone_number) {
+      toast({ title: 'No phone number', description: 'This profile has no phone number set', variant: 'destructive' });
+      return;
+    }
+
+    setSendingInvite(profile.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-magic-link', {
+        body: { profileId: profile.id },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const phone = profile.phone_number.replace(/[^0-9+]/g, '');
+      const number = phone.startsWith('+') ? phone.substring(1) : phone;
+      const message = WHATSAPP_INVITE_MESSAGE(profile.full_name || 'there', data.magicLinkUrl);
+      const waUrl = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+
+      queryClient.invalidateQueries({ queryKey: ['admin-profiles'] });
+      toast({ title: 'Magic link generated', description: 'WhatsApp opened with the invite link' });
+    } catch (err: any) {
+      console.error('Failed to generate magic link:', err);
+      toast({
+        title: 'Failed to send invite',
+        description: err.message || 'Could not generate magic link',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingInvite(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -166,14 +196,17 @@ const AdminProfiles = () => {
                       <td className="px-4 py-3 text-muted-foreground">{profile.location || '-'}</td>
                       <td className="px-4 py-3 text-muted-foreground">{profile.gender || '-'}</td>
                       <td className="px-4 py-3">
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-wrap">
+                          {!profile.user_id && (
+                            <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Unclaimed</span>
+                          )}
                           {profile.is_featured && (
                             <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Featured</span>
                           )}
                           {profile.is_banned && (
                             <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded-full">Banned</span>
                           )}
-                          {!profile.is_featured && !profile.is_banned && (
+                          {!profile.is_featured && !profile.is_banned && profile.user_id && (
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">Active</span>
                           )}
                         </div>
@@ -188,20 +221,17 @@ const AdminProfiles = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
-                          {profile.phone_number && !profile.user_id && (
+                          {!profile.user_id && profile.phone_number && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              asChild
-                              title="Send WhatsApp invite"
+                              onClick={() => sendWhatsAppInvite(profile)}
+                              disabled={sendingInvite === profile.id}
+                              title="Send WhatsApp invite with magic link"
                             >
-                              <a
-                                href={getWhatsAppUrl(profile.phone_number, profile.id)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <MessageCircle className="h-4 w-4 text-emerald-400" />
-                              </a>
+                              {sendingInvite === profile.id
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <MessageCircle className="h-4 w-4 text-emerald-400" />}
                             </Button>
                           )}
                           <Button
