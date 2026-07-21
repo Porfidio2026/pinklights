@@ -81,7 +81,7 @@ const Address = () => {
           try {
             // First get the address from coordinates using OpenStreetMap
             const response = await fetch(
-              `https://api.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&format=json`
+              `https://nominatim.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&format=json`
             );
             const data = await response.json();
             const locationString = data.display_name;
