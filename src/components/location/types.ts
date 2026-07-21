@@ -2,7 +2,7 @@
 export interface LocationAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
-  onCoordinatesChange?: (lat: number, lng: number) => void;
+  onPlaceSelect?: (address: string, lat: number, lng: number) => void;
   placeholder?: string;
   className?: string;
   required?: boolean;

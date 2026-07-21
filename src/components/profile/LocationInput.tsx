@@ -87,7 +87,7 @@ export const LocationInput: React.FC<LocationInputProps> = ({ formData, setFormD
         <LocationAutocomplete
           value={formData.location}
           onChange={(location) => setFormData({ ...formData, location })}
-          onCoordinatesChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+          onPlaceSelect={(location, lat, lng) => setFormData({ ...formData, location, latitude: lat, longitude: lng })}
           skipProfileUpdate={skipProfileUpdate}
           required
         />

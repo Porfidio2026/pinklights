@@ -23,7 +23,7 @@ type GmpSelectEvent = Event & {
 export const LocationAutocomplete = ({
   value,
   onChange,
-  onCoordinatesChange,
+  onPlaceSelect,
   placeholder = "Enter location",
   className,
   required,
@@ -33,7 +33,7 @@ export const LocationAutocomplete = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const elementRef = useRef<PlaceAutocompleteElement | null>(null);
   const onChangeRef = useRef(onChange);
-  const onCoordinatesChangeRef = useRef(onCoordinatesChange);
+  const onPlaceSelectRef = useRef(onPlaceSelect);
   const skipProfileUpdateRef = useRef(skipProfileUpdate);
   const { loaded, error } = useGoogleMapsPlaces();
 
@@ -42,8 +42,8 @@ export const LocationAutocomplete = ({
   }, [onChange]);
 
   useEffect(() => {
-    onCoordinatesChangeRef.current = onCoordinatesChange;
-  }, [onCoordinatesChange]);
+    onPlaceSelectRef.current = onPlaceSelect;
+  }, [onPlaceSelect]);
 
   useEffect(() => {
     skipProfileUpdateRef.current = skipProfileUpdate;
@@ -99,8 +99,11 @@ export const LocationAutocomplete = ({
 
         if (!formattedAddress || lat == null || lng == null) return;
 
-        onChangeRef.current(formattedAddress);
-        onCoordinatesChangeRef.current?.(lat, lng);
+        if (onPlaceSelectRef.current) {
+          onPlaceSelectRef.current(formattedAddress, lat, lng);
+        } else {
+          onChangeRef.current(formattedAddress);
+        }
 
         localStorage.setItem(
           "userLocation",
