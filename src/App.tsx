@@ -102,6 +102,7 @@ function App() {
                   <Route path="reports" element={<AdminReports />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="create-profile" element={<AdminCreateProfile />} />
+                  <Route path="edit-profile/:id" element={<AdminCreateProfile />} />
                   <Route path="bulk-import" element={<AdminBulkImport />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>

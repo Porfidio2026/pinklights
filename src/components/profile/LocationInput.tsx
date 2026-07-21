@@ -11,9 +11,11 @@ import { supabase } from '@/lib/supabase';
 interface LocationInputProps {
   formData: ProfileFormData;
   setFormData: (data: ProfileFormData) => void;
+  /** When true, skip updating the logged-in user's profile (used for admin-created profiles). */
+  skipProfileUpdate?: boolean;
 }
 
-export const LocationInput: React.FC<LocationInputProps> = ({ formData, setFormData }) => {
+export const LocationInput: React.FC<LocationInputProps> = ({ formData, setFormData, skipProfileUpdate }) => {
   const { toast } = useToast();
 
   const getUserLocation = () => {
@@ -85,6 +87,8 @@ export const LocationInput: React.FC<LocationInputProps> = ({ formData, setFormD
         <LocationAutocomplete
           value={formData.location}
           onChange={(location) => setFormData({ ...formData, location })}
+          onCoordinatesChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+          skipProfileUpdate={skipProfileUpdate}
           required
         />
         <Button type="button" onClick={getUserLocation} variant="outline">

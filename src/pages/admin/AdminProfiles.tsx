@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Ban, CheckCircle, Star, StarOff, Trash2, Search, ShieldCheck, ShieldOff, MessageCircle, Loader2 } from 'lucide-react';
+import { Ban, CheckCircle, Star, StarOff, Trash2, Search, ShieldCheck, ShieldOff, MessageCircle, Loader2, Pencil } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Profile {
   id: string;
@@ -40,6 +41,7 @@ function getPaymentStatus(profile: Profile): { label: string; className: string 
 
 const AdminProfiles = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [sendingInvite, setSendingInvite] = useState<string | null>(null);
@@ -234,6 +236,14 @@ const AdminProfiles = () => {
                                 : <MessageCircle className="h-4 w-4 text-emerald-400" />}
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/admin/edit-profile/${profile.id}`)}
+                            title="Edit profile"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"

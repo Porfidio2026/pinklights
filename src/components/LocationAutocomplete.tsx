@@ -23,19 +23,31 @@ type GmpSelectEvent = Event & {
 export const LocationAutocomplete = ({
   value,
   onChange,
+  onCoordinatesChange,
   placeholder = "Enter location",
   className,
   required,
+  skipProfileUpdate,
 }: LocationAutocompleteProps) => {
   const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement>(null);
   const elementRef = useRef<PlaceAutocompleteElement | null>(null);
   const onChangeRef = useRef(onChange);
+  const onCoordinatesChangeRef = useRef(onCoordinatesChange);
+  const skipProfileUpdateRef = useRef(skipProfileUpdate);
   const { loaded, error } = useGoogleMapsPlaces();
 
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    onCoordinatesChangeRef.current = onCoordinatesChange;
+  }, [onCoordinatesChange]);
+
+  useEffect(() => {
+    skipProfileUpdateRef.current = skipProfileUpdate;
+  }, [skipProfileUpdate]);
 
   useEffect(() => {
     if (error) {
@@ -88,6 +100,7 @@ export const LocationAutocomplete = ({
         if (!formattedAddress || lat == null || lng == null) return;
 
         onChangeRef.current(formattedAddress);
+        onCoordinatesChangeRef.current?.(lat, lng);
 
         localStorage.setItem(
           "userLocation",
@@ -99,10 +112,13 @@ export const LocationAutocomplete = ({
           }),
         );
 
-        await Promise.all([
+        const promises: Promise<void>[] = [
           coordinatesService.cache(formattedAddress, lat, lng),
-          coordinatesService.updateUserProfile(formattedAddress, lat, lng),
-        ]);
+        ];
+        if (!skipProfileUpdateRef.current) {
+          promises.push(coordinatesService.updateUserProfile(formattedAddress, lat, lng));
+        }
+        await Promise.all(promises);
 
         toast({
           title: "Location updated",

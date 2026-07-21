@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -21,10 +21,11 @@ import { Loader2, ImagePlus } from 'lucide-react';
 const MAX_IMAGES = 50;
 
 const AdminCreateProfile = () => {
+  const { id: editId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { formData, setFormData, loading, handleSubmit, resetForm } = useAdminProfileForm();
+  const { formData, setFormData, loading, initialLoading, isEditMode, handleSubmit, resetForm } = useAdminProfileForm(editId);
 
   const [selectedImages, setSelectedImages] = useState<PreviewImage[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -76,7 +77,7 @@ const AdminCreateProfile = () => {
       return;
     }
 
-    // 1. Create the profile
+    // 1. Create or update the profile
     const profile = await handleSubmit();
     if (!profile) return;
 
@@ -106,11 +107,11 @@ const AdminCreateProfile = () => {
           await supabase.from('profile_pictures').insert({
             profile_id: profile.id,
             picture_url: urlData.publicUrl,
-            is_main_picture: i === 0,
+            is_main_picture: i === 0 && !isEditMode,
             display_order: i,
           });
 
-          if (i === 0) mainPictureUrl = urlData.publicUrl;
+          if (i === 0 && !isEditMode) mainPictureUrl = urlData.publicUrl;
         }
 
         if (mainPictureUrl) {
@@ -123,7 +124,7 @@ const AdminCreateProfile = () => {
         console.error('Image upload error:', err);
         toast({
           title: 'Warning',
-          description: 'Profile created but some images failed to upload',
+          description: `Profile ${isEditMode ? 'updated' : 'created'} but some images failed to upload`,
           variant: 'destructive',
         });
       } finally {
@@ -134,24 +135,32 @@ const AdminCreateProfile = () => {
     // 3. Clean up previews and navigate
     selectedImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
     setSelectedImages([]);
-    resetForm();
+    if (!isEditMode) resetForm();
 
-    toast({ title: 'Profile created successfully' });
+    toast({ title: `Profile ${isEditMode ? 'updated' : 'created'} successfully` });
     navigate('/admin/profiles');
   };
 
   const isSubmitting = loading || uploading;
 
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Create Profile</h1>
+      <h1 className="text-3xl font-bold">{isEditMode ? 'Edit Profile' : 'Create Profile'}</h1>
 
       <Card className="p-6">
         <form onSubmit={handleFormSubmit} className="space-y-6">
           <ServiceAndGenderInput formData={formData} setFormData={setFormData} />
           <BasicInfoInput formData={formData} setFormData={setFormData} />
           <PhoneNumberInput formData={formData} setFormData={setFormData} />
-          <LocationInput formData={formData} setFormData={setFormData} />
+          <LocationInput formData={formData} setFormData={setFormData} skipProfileUpdate />
           <AboutMeInput formData={formData} setFormData={setFormData} />
           <CharacteristicsInput formData={formData} setFormData={setFormData} />
 
@@ -188,10 +197,10 @@ const AdminCreateProfile = () => {
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {uploading ? 'Uploading images...' : 'Creating profile...'}
+                {uploading ? 'Uploading images...' : isEditMode ? 'Updating profile...' : 'Creating profile...'}
               </>
             ) : (
-              'Create Profile'
+              isEditMode ? 'Update Profile' : 'Create Profile'
             )}
           </Button>
         </form>
