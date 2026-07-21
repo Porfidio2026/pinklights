@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Ban, CheckCircle, Star, StarOff, Trash2, Search, ShieldCheck, ShieldOff, MessageCircle, Loader2, Pencil } from 'lucide-react';
+import { Ban, CheckCircle, Star, StarOff, Trash2, Search, ShieldCheck, ShieldOff, MessageCircle, Loader2, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Profile {
@@ -45,8 +45,19 @@ const AdminProfiles = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [sendingInvite, setSendingInvite] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<keyof Profile | null>(null);
+  const [sortAsc, setSortAsc] = useState(true);
 
-  const { data: profiles = [], isLoading } = useQuery({
+  const toggleSort = (field: keyof Profile) => {
+    if (sortField === field) {
+      setSortAsc((prev) => !prev);
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  };
+
+  const { data: rawProfiles = [], isLoading } = useQuery({
     queryKey: ['admin-profiles', search],
     queryFn: async () => {
       let query = supabase
@@ -64,6 +75,16 @@ const AdminProfiles = () => {
       return (data ?? []) as Profile[];
     },
   });
+
+  const profiles = useMemo(() => {
+    if (!sortField) return rawProfiles;
+    return [...rawProfiles].sort((a, b) => {
+      const aVal = a[sortField] ?? '';
+      const bVal = b[sortField] ?? '';
+      const cmp = String(aVal).localeCompare(String(bVal));
+      return sortAsc ? cmp : -cmp;
+    });
+  }, [rawProfiles, sortField, sortAsc]);
 
   const toggleBan = useMutation({
     mutationFn: async ({ id, isBanned }: { id: string; isBanned: boolean }) => {
@@ -180,12 +201,38 @@ const AdminProfiles = () => {
             <table className="w-full text-sm">
               <thead className="bg-muted border-b border-border">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium">Name</th>
-                  <th className="text-left px-4 py-3 font-medium">Location</th>
-                  <th className="text-left px-4 py-3 font-medium">Gender</th>
+                  {([
+                    ['full_name', 'Name'],
+                    ['phone_number', 'Phone'],
+                    ['location', 'Location'],
+                    ['gender', 'Gender'],
+                  ] as [keyof Profile, string][]).map(([field, label]) => (
+                    <th
+                      key={field}
+                      className="text-left px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground"
+                      onClick={() => toggleSort(field)}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {label}
+                        {sortField === field
+                          ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+                          : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                      </span>
+                    </th>
+                  ))}
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium">Payment</th>
-                  <th className="text-left px-4 py-3 font-medium">Created</th>
+                  <th
+                    className="text-left px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground"
+                    onClick={() => toggleSort('created_at')}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Created
+                      {sortField === 'created_at'
+                        ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+                        : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                    </span>
+                  </th>
                   <th className="text-right px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -195,6 +242,7 @@ const AdminProfiles = () => {
                   return (
                     <tr key={profile.id} className={profile.is_banned ? 'bg-destructive/10' : ''}>
                       <td className="px-4 py-3 font-medium">{profile.full_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{profile.phone_number || '-'}</td>
                       <td className="px-4 py-3 text-muted-foreground">{profile.location || '-'}</td>
                       <td className="px-4 py-3 text-muted-foreground">{profile.gender || '-'}</td>
                       <td className="px-4 py-3">
