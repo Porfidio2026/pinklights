@@ -71,6 +71,14 @@ const GuideForVisitors = React.lazy(() => import('./pages/seo/guides/ForVisitors
 const GuideProfileTips = React.lazy(() => import('./pages/seo/guides/ProfileTips'));
 const FAQ = React.lazy(() => import('./pages/seo/FAQ'));
 
+// SEO pages — compare + about + safety
+const CompareHub = React.lazy(() => import('./pages/seo/CompareHub'));
+const CompareVsDatingApps = React.lazy(() => import('./pages/seo/compare/VsDatingApps'));
+const CompareVsClassifiedAds = React.lazy(() => import('./pages/seo/compare/VsClassifiedAds'));
+const CompareBestPlatforms = React.lazy(() => import('./pages/seo/compare/BestPlatforms'));
+const About = React.lazy(() => import('./pages/seo/About'));
+const Safety = React.lazy(() => import('./pages/seo/Safety'));
+
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
@@ -117,6 +125,14 @@ function App() {
                 <Route path="/guides/for-visitors" element={<GuideForVisitors />} />
                 <Route path="/guides/profile-tips" element={<GuideProfileTips />} />
                 <Route path="/faq" element={<FAQ />} />
+
+                {/* SEO pages — compare + about + safety */}
+                <Route path="/compare" element={<CompareHub />} />
+                <Route path="/compare/pinklights-vs-dating-apps" element={<CompareVsDatingApps />} />
+                <Route path="/compare/pinklights-vs-classified-ads" element={<CompareVsClassifiedAds />} />
+                <Route path="/compare/best-platforms-belgium" element={<CompareBestPlatforms />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/safety" element={<Safety />} />
 
                 {/* Protected profile routes */}
                 <Route path="/create-profile" element={<RequireAuth><CreateProfile /></RequireAuth>} />
