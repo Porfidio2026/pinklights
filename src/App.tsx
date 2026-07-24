@@ -79,6 +79,17 @@ const CompareBestPlatforms = React.lazy(() => import('./pages/seo/compare/BestPl
 const About = React.lazy(() => import('./pages/seo/About'));
 const Safety = React.lazy(() => import('./pages/seo/Safety'));
 
+// Locale (translated) SEO pages
+const LocaleFindHub = React.lazy(() => import('./pages/seo/LocaleFindHub'));
+const LocaleCityPage = React.lazy(() => import('./pages/seo/LocaleCityPage'));
+const LocaleGuidesHub = React.lazy(() => import('./pages/seo/LocaleGuidesHub'));
+const LocaleGuidePage = React.lazy(() => import('./pages/seo/LocaleGuidePage'));
+const LocaleFAQ = React.lazy(() => import('./pages/seo/LocaleFAQ'));
+const LocaleCompareHub = React.lazy(() => import('./pages/seo/LocaleCompareHub'));
+const LocaleComparePage = React.lazy(() => import('./pages/seo/LocaleComparePage'));
+const LocaleAbout = React.lazy(() => import('./pages/seo/LocaleAbout'));
+const LocaleSafety = React.lazy(() => import('./pages/seo/LocaleSafety'));
+
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
@@ -133,6 +144,17 @@ function App() {
                 <Route path="/compare/best-platforms-belgium" element={<CompareBestPlatforms />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/safety" element={<Safety />} />
+
+                {/* Translated SEO pages (fr, nl, es, pt, ru, de) */}
+                <Route path="/:locale/find" element={<LocaleFindHub />} />
+                <Route path="/:locale/find/:slug" element={<LocaleCityPage />} />
+                <Route path="/:locale/guides" element={<LocaleGuidesHub />} />
+                <Route path="/:locale/guides/:slug" element={<LocaleGuidePage />} />
+                <Route path="/:locale/faq" element={<LocaleFAQ />} />
+                <Route path="/:locale/compare" element={<LocaleCompareHub />} />
+                <Route path="/:locale/compare/:slug" element={<LocaleComparePage />} />
+                <Route path="/:locale/about" element={<LocaleAbout />} />
+                <Route path="/:locale/safety" element={<LocaleSafety />} />
 
                 {/* Protected profile routes */}
                 <Route path="/create-profile" element={<RequireAuth><CreateProfile /></RequireAuth>} />

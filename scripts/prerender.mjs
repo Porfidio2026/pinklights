@@ -17,33 +17,29 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIST = join(__dirname, '..', 'dist');
 const PORT = 4173;
 
-const SEO_ROUTES = [
-  '/',
-  '/privacy',
-  '/terms',
-  '/find',
-  '/find/antwerp',
-  '/find/brussels',
-  '/find/ghent',
-  '/find/bruges',
-  '/find/liege',
-  '/find/leuven',
-  '/find/charleroi',
-  '/find/namur',
-  '/guides',
-  '/guides/how-it-works',
-  '/guides/safety-tips',
-  '/guides/first-meeting',
-  '/guides/for-visitors',
-  '/guides/profile-tips',
+const LOCALES = ['fr', 'nl', 'es', 'pt', 'ru', 'de'];
+const CITIES = ['antwerp', 'brussels', 'ghent', 'bruges', 'liege', 'leuven', 'charleroi', 'namur'];
+const GUIDES = ['how-it-works', 'safety-tips', 'first-meeting', 'for-visitors', 'profile-tips'];
+const COMPARISONS = ['pinklights-vs-dating-apps', 'pinklights-vs-classified-ads', 'best-platforms-belgium'];
+
+const ENGLISH_ROUTES = [
+  '/', '/privacy', '/terms',
+  '/find', ...CITIES.map(c => `/find/${c}`),
+  '/guides', ...GUIDES.map(g => `/guides/${g}`),
   '/faq',
-  '/compare',
-  '/compare/pinklights-vs-dating-apps',
-  '/compare/pinklights-vs-classified-ads',
-  '/compare/best-platforms-belgium',
-  '/about',
-  '/safety',
+  '/compare', ...COMPARISONS.map(c => `/compare/${c}`),
+  '/about', '/safety',
 ];
+
+const LOCALE_ROUTES = LOCALES.flatMap(locale => [
+  `/${locale}/find`, ...CITIES.map(c => `/${locale}/find/${c}`),
+  `/${locale}/guides`, ...GUIDES.map(g => `/${locale}/guides/${g}`),
+  `/${locale}/faq`,
+  `/${locale}/compare`, ...COMPARISONS.map(c => `/${locale}/compare/${c}`),
+  `/${locale}/about`, `/${locale}/safety`,
+]);
+
+const SEO_ROUTES = [...ENGLISH_ROUTES, ...LOCALE_ROUTES];
 
 // Simple static file server for the dist/ directory
 function startServer() {
