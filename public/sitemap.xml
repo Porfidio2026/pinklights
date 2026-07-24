@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Core pages -->
+  <url><loc>https://www.pink-lights.be/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://www.pink-lights.be/search</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.pink-lights.be/auth</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://www.pink-lights.be/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://www.pink-lights.be/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+
+  <!-- Trust / About -->
+  <url><loc>https://www.pink-lights.be/about</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pink-lights.be/safety</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pink-lights.be/faq</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+
+  <!-- City pages -->
+  <url><loc>https://www.pink-lights.be/find</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.pink-lights.be/find/antwerp</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.pink-lights.be/find/brussels</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.pink-lights.be/find/ghent</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.pink-lights.be/find/bruges</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.pink-lights.be/find/liege</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pink-lights.be/find/leuven</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pink-lights.be/find/charleroi</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pink-lights.be/find/namur</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+
+  <!-- Guides -->
+  <url><loc>https://www.pink-lights.be/guides</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pink-lights.be/guides/how-it-works</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pink-lights.be/guides/safety-tips</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.pink-lights.be/guides/first-meeting</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.pink-lights.be/guides/for-visitors</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.pink-lights.be/guides/profile-tips</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+
+  <!-- Comparisons -->
+  <url><loc>https://www.pink-lights.be/compare</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.pink-lights.be/compare/pinklights-vs-dating-apps</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.pink-lights.be/compare/pinklights-vs-classified-ads</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.pink-lights.be/compare/best-platforms-belgium</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+</urlset>

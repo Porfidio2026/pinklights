@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://www.pink-lights.be/sitemap.xml
+
+# Disallow internal/admin pages
+Disallow: /admin
+Disallow: /admin/
+Disallow: /account-settings
+Disallow: /upload-profile-picture
+Disallow: /create-profile
+Disallow: /set-availabilities
+Disallow: /buy-credits
+Disallow: /payment-success
+Disallow: /partner-*
+Disallow: /create-partner
+Disallow: /create-ad
+Disallow: /edit-ads
