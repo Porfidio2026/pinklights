@@ -158,6 +158,23 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Successfully credited ${session.day_credits} day(s) to user ${session.user_id}`);
+
+    // Fire-and-forget invoice generation (non-blocking)
+    try {
+      const invoiceUrl = `${SUPABASE_URL}/functions/v1/generate-invoice`;
+      fetch(invoiceUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ payment_session_id: session.id }),
+      }).catch(err => console.error('Invoice generation fire-and-forget failed:', err));
+    } catch (e) {
+      console.error('Failed to trigger invoice generation:', e);
+      // Non-fatal: payment still succeeded
+    }
+
     return new Response('OK', { status: 200 });
 
   } catch (error) {

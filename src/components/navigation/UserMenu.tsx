@@ -18,6 +18,7 @@ import {
   MapPin,
   Settings,
   CreditCard,
+  FileText,
   LogOut,
   ChevronDown,
   Clock,
@@ -166,6 +167,12 @@ export const UserMenu = () => {
           <Link to="/buy-credits" className="cursor-pointer">
             <CreditCard className="mr-2 h-4 w-4" />
             <span>Payment & Visibility</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/invoices" className="cursor-pointer">
+            <FileText className="mr-2 h-4 w-4" />
+            <span>Invoices</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

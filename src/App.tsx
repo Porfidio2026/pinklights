@@ -48,6 +48,8 @@ const AdminUsers = React.lazy(() => import('./pages/admin/AdminUsers'));
 const AdminSettings = React.lazy(() => import('./pages/admin/AdminSettings'));
 const AdminBulkImport = React.lazy(() => import('./pages/admin/AdminBulkImport'));
 const AdminCreateProfile = React.lazy(() => import('./pages/admin/AdminCreateProfile'));
+const AdminInvoices = React.lazy(() => import('./pages/admin/AdminInvoices'));
+const MyInvoices = React.lazy(() => import('./pages/MyInvoices'));
 
 const queryClient = new QueryClient();
 
@@ -85,6 +87,7 @@ function App() {
                 <Route path="/address" element={<RequireAuth><Address /></RequireAuth>} />
                 <Route path="/buy-credits" element={<RequireAuth><BuyDayCredits /></RequireAuth>} />
                 <Route path="/payment-success" element={<RequireAuth><PaymentSuccess /></RequireAuth>} />
+                <Route path="/invoices" element={<RequireAuth><MyInvoices /></RequireAuth>} />
 
                 {/* Protected partner routes */}
                 <Route path="/create-partner" element={<RequireAuth><CreatePartner /></RequireAuth>} />
@@ -103,6 +106,7 @@ function App() {
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="create-profile" element={<AdminCreateProfile />} />
                   <Route path="edit-profile/:id" element={<AdminCreateProfile />} />
+                  <Route path="invoices" element={<AdminInvoices />} />
                   <Route path="bulk-import" element={<AdminBulkImport />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>

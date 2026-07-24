@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, AlertTriangle, Shield, Settings, Upload, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Users, AlertTriangle, Shield, Settings, Upload, UserPlus, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/admin/profiles', icon: Users, label: 'Profiles' },
   { to: '/admin/create-profile', icon: UserPlus, label: 'Create Profile' },
+  { to: '/admin/invoices', icon: FileText, label: 'Invoices' },
   { to: '/admin/reports', icon: AlertTriangle, label: 'Reports' },
   { to: '/admin/users', icon: Shield, label: 'Users' },
   { to: '/admin/bulk-import', icon: Upload, label: 'Bulk Import' },

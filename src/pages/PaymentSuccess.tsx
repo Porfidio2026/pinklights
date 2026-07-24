@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCredits } from '@/hooks/useCredits';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Loader2, FileText } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 const PaymentSuccess = () => {
@@ -79,6 +79,14 @@ const PaymentSuccess = () => {
             className="w-full gradient-pink text-white border-0 rounded-xl h-11 font-semibold hover:opacity-90 transition-opacity"
           >
             Activate Your Days
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/invoices')}
+            className="w-full text-muted-foreground"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            View Invoices
           </Button>
           <Button
             variant="ghost"
