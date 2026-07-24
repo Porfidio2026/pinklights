@@ -5,7 +5,7 @@ const Safety = () => {
   return (
     <ContentPageTemplate
       title="Safety on Pinklights"
-      metaTitle="Is Pinklights Safe? — Security & Privacy"
+      metaTitle="Is Pinklights Safe? Security and Privacy"
       metaDescription="Learn how Pinklights protects your privacy with encrypted storage, profile moderation, GDPR compliance, and reporting tools. Your safety matters."
       url="/safety"
       breadcrumbs={[
@@ -13,7 +13,7 @@ const Safety = () => {
       ]}
       datePublished="2026-07-24"
       faqItems={[
-        { question: 'Is my personal data safe on Pinklights?', answer: 'Yes. We use Supabase with encrypted storage and row-level security policies. Your data is protected at rest and in transit, and we comply fully with GDPR requirements.' },
+        { question: 'Is my personal data safe on Pinklights?', answer: 'Yes. We use encrypted storage and strict access controls. Your data is protected at rest and in transit, and we comply fully with GDPR requirements.' },
         { question: 'Can I delete my data from Pinklights?', answer: 'Absolutely. Under GDPR, you have the right to request access to, export, or deletion of all your personal data. Contact us via WhatsApp or email and we will process your request promptly.' },
         { question: 'How do I report a problematic profile?', answer: 'You can report any profile directly from the profile page. Our moderation team reviews all reports and takes action including warnings, profile removal, or permanent bans as appropriate.' },
       ]}
@@ -23,15 +23,15 @@ const Safety = () => {
         { title: 'About Pinklights', description: 'Learn about our mission, values, and team.', url: '/about' },
       ]}
       ctaHeadline="Browse with Confidence"
-      ctaDescription="A platform built with your safety in mind — explore profiles across Belgium."
+      ctaDescription="A platform built with your safety in mind. Explore profiles across Belgium."
     >
       <p className="text-muted-foreground leading-relaxed">
-        Safety is not an add-on feature at Pinklights — it is a foundational principle that shapes every aspect of the platform. From how we store your data to how we moderate profiles and handle reports, every decision is made with your security and privacy in mind. This page explains exactly what we do to keep you safe and what you can do to protect yourself.
+        Safety is not an add-on feature at Pinklights. It is a foundational principle that shapes every aspect of the platform. From how we store your data to how we moderate profiles and handle reports, every decision is made with your security and privacy in mind. This page explains exactly what we do to keep you safe and what you can do to protect yourself.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-3">Platform Security</h2>
       <p className="text-muted-foreground leading-relaxed">
-        Pinklights is built on Supabase, a modern infrastructure platform that provides enterprise-grade security features. Your data is protected with encrypted storage — both at rest and in transit. We implement row-level security (RLS) policies on our database, which means that users can only access data they are authorised to see. There is no way for one user to view another user's private account information through the platform.
+        We use enterprise-grade security infrastructure to protect your data. Your information is secured with encrypted storage, both at rest and in transit. We implement strict access controls on our database, which means that users can only access data they are authorised to see. There is no way for one user to view another user's private account information through the platform.
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
         Our authentication system uses secure, industry-standard protocols. Profile owners access their accounts through authenticated sessions, and all API endpoints are protected against unauthorised access. We regularly review our security configuration to ensure it meets current best practices.
@@ -39,7 +39,7 @@ const Safety = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-3">User Privacy Controls</h2>
       <p className="text-muted-foreground leading-relaxed">
-        Privacy on Pinklights is user-controlled. Profile owners decide what information appears on their profile — from photos to personal details to contact information. WhatsApp numbers are displayed only on individual profile pages, not in search results or public listings. This means your contact information is only visible to people who have actively chosen to view your full profile.
+        Privacy on Pinklights is user-controlled. Profile owners decide what information appears on their profile, from photos to personal details to contact information. WhatsApp numbers are displayed only on individual profile pages, not in search results or public listings. This means your contact information is only visible to people who have actively chosen to view your full profile.
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
         For browsers, privacy is equally protected. You can browse all profiles without creating an account, which means no personal data is collected from casual visitors. If you do create an account as a profile owner, your account information is stored securely and never shared with other users or third parties.
@@ -50,7 +50,7 @@ const Safety = () => {
         Every profile on Pinklights goes through an admin review process before becoming publicly visible. Our moderation team checks profiles for completeness, appropriate content, and adherence to platform standards. This review layer helps prevent fake profiles, misleading information, and inappropriate content from reaching the platform.
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
-        Moderation is ongoing, not just at creation. Our team monitors the platform for profiles that may have been updated with problematic content, and we respond to user reports promptly. When a profile violates our standards, we take graduated action — from warnings to profile removal to permanent bans depending on the severity and nature of the violation.
+        Moderation is ongoing, not just at creation. Our team monitors the platform for profiles that may have been updated with problematic content, and we respond to user reports promptly. When a profile violates our standards, we take graduated action, from warnings to profile removal to permanent bans depending on the severity and nature of the violation.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-3">Reporting System</h2>
@@ -63,7 +63,7 @@ const Safety = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-3">GDPR Compliance</h2>
       <p className="text-muted-foreground leading-relaxed">
-        As a Belgian company, Pinklights is fully subject to the General Data Protection Regulation (GDPR). This means you have clear, enforceable rights over your personal data:
+        Pinklights complies fully with the General Data Protection Regulation (GDPR). This means you have clear, enforceable rights over your personal data:
       </p>
       <ul className="list-disc pl-6 mt-3 space-y-2 text-muted-foreground">
         <li><strong>Right to access:</strong> You can request a copy of all personal data we hold about you.</li>

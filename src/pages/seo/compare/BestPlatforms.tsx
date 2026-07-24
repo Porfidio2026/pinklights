@@ -5,7 +5,7 @@ const BestPlatforms = () => {
   return (
     <ContentPageTemplate
       title="Best Companion Platforms in Belgium (2026)"
-      metaTitle="Best Companion Platforms Belgium 2026 — Guide"
+      metaTitle="Best Companion Platforms Belgium 2026 - Guide"
       metaDescription="What to look for in a companion platform in Belgium. Compare safety, verification, contact methods, and privacy across different platform types."
       url="/compare/best-platforms-belgium"
       breadcrumbs={[
@@ -19,10 +19,10 @@ const BestPlatforms = () => {
         { title: 'Safety on Pinklights', description: 'How we protect your privacy and security.', url: '/safety' },
       ]}
       ctaHeadline="Try a Platform Built for Belgium"
-      ctaDescription="Browse curated profiles across Belgian cities — no account needed to start."
+      ctaDescription="Browse curated profiles across Belgian cities. No account needed to start."
     >
       <p className="text-muted-foreground leading-relaxed">
-        Finding the right companion platform in Belgium depends on what you prioritise — safety, ease of contact, privacy, or breadth of choice. This guide walks through the key factors to consider and the different types of platforms available, so you can make an informed choice rather than relying on trial and error.
+        Finding the right companion platform in Belgium depends on what you prioritise: safety, ease of contact, privacy, or breadth of choice. This guide walks through the key factors to consider and the different types of platforms available, so you can make an informed choice rather than relying on trial and error.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-3">What to Look for in a Platform</h2>
@@ -72,7 +72,7 @@ const BestPlatforms = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-3">Making Your Choice</h2>
       <p className="text-muted-foreground leading-relaxed">
-        There is no single "best" platform — it depends on your priorities. If you want the largest possible pool of romantic matches, a mainstream dating app may be the right choice. If you want maximum volume and free posting, classified ads have their place. If you value curated profiles, direct contact, safety features, and a platform designed specifically for companion connections in Belgium, Pinklights is built for exactly that purpose.
+        There is no single "best" platform; it depends on your priorities. If you want the largest possible pool of romantic matches, a mainstream dating app may be the right choice. If you want maximum volume and free posting, classified ads have their place. If you value curated profiles, direct contact, safety features, and a platform designed specifically for companion connections in Belgium, Pinklights is built for exactly that purpose.
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
         The most important thing is to choose a platform where you feel safe and where the experience matches your expectations. Take time to read our safety guides, understand the platform you are using, and make informed decisions about who you connect with.

@@ -17,7 +17,7 @@ const GETTING_STARTED_FAQS = [
   },
   {
     question: 'How do I search for profiles?',
-    answer: 'Start by selecting a service type and your preferences on the homepage. You will then see matching profiles that you can further filter by city, distance, appearance, and other criteria. The search is designed to be intuitive — no complicated steps or hidden menus.',
+    answer: 'Start by selecting a service type and your preferences on the homepage. You will then see matching profiles that you can further filter by city, distance, appearance, and other criteria. The search is designed to be intuitive, with no complicated steps or hidden menus.',
   },
   {
     question: 'Is Pinklights available outside Belgium?',
@@ -28,7 +28,7 @@ const GETTING_STARTED_FAQS = [
 const CONTACTING_FAQS = [
   {
     question: 'How do I contact someone on Pinklights?',
-    answer: 'When you find a profile you are interested in, you can contact the person directly via WhatsApp. There is no in-app messaging — conversations happen on WhatsApp for speed and convenience.',
+    answer: 'When you find a profile you are interested in, you can contact the person directly via WhatsApp. There is no in-app messaging. Conversations happen on WhatsApp for speed and convenience.',
   },
   {
     question: 'Is my phone number visible to profile owners?',

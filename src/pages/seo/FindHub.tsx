@@ -37,17 +37,17 @@ const FindHub = () => {
             Find Companions Across Belgium
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Pinklights connects you with curated profiles across Belgium's most vibrant cities. Whether you're a local or visiting, browse profiles near you and connect directly via WhatsApp — no lengthy sign-up process, no algorithms. Just real people, real connections.
+            Pinklights connects you with curated profiles across Belgium's most vibrant cities. Whether you're a local or visiting, browse profiles near you and connect directly via WhatsApp. No lengthy sign-up process, no algorithms. Just real people, real connections.
           </p>
         </header>
 
         <Card className="p-8 prose prose-sm max-w-none mb-8">
           <h2 className="text-xl font-semibold mb-3">How Location Search Works</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Our platform uses location-based search to show you profiles near your chosen city. You can search by distance (up to 50 km), filter by physical preferences, and browse detailed profiles with photos — all without creating an account. When you find someone you'd like to meet, contact them directly through WhatsApp for a fast, personal conversation.
+            Our platform uses location-based search to show you profiles near your chosen city. You can search by distance (up to 50 km), filter by physical preferences, and browse detailed profiles with photos, all without creating an account. When you find someone you'd like to meet, contact them directly through WhatsApp for a fast, personal conversation.
           </p>
           <p className="text-muted-foreground leading-relaxed mt-3">
-            Belgium is compact enough that most cities are within easy reach of each other. Someone in Antwerp might also appear in searches from Ghent or Brussels. Our distance filter lets you decide how far you're willing to travel — or whether you'd prefer someone just around the corner.
+            Belgium is compact enough that most cities are within easy reach of each other. Someone in Antwerp might also appear in searches from Ghent or Brussels. Our distance filter lets you decide how far you're willing to travel, or whether you'd prefer someone just around the corner.
           </p>
         </Card>
 
@@ -79,7 +79,7 @@ const FindHub = () => {
             Belgium sits at the crossroads of Europe, and Pinklights reflects that diversity. Our platform serves both Flemish and Walloon cities, with profiles available in multiple languages. Unlike traditional dating apps that rely on matching algorithms and weeks of messaging, Pinklights gives you direct access to browse profiles with clear photos and real information, then reach out via WhatsApp when you're ready.
           </p>
           <p className="text-muted-foreground leading-relaxed mt-3">
-            Whether you're in the diamond district of Antwerp, the EU quarter of Brussels, the student bars of Leuven, or the cobblestone streets of Bruges, there are profiles waiting for you. Safety and discretion are built into the platform — read our <a href="/safety" className="text-primary hover:underline">safety guide</a> and <a href="/guides/safety-tips" className="text-primary hover:underline">safety tips</a> to learn more.
+            Whether you're in the diamond district of Antwerp, the EU quarter of Brussels, the student bars of Leuven, or the cobblestone streets of Bruges, there are profiles waiting for you. Safety and discretion are built into the platform. Read our <a href="/safety" className="text-primary hover:underline">safety guide</a> and <a href="/guides/safety-tips" className="text-primary hover:underline">safety tips</a> to learn more.
           </p>
         </Card>
 

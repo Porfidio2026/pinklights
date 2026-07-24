@@ -5,8 +5,8 @@ const VsDatingApps = () => {
   return (
     <ContentPageTemplate
       title="Pinklights vs Dating Apps"
-      metaTitle="Pinklights vs Dating Apps — Honest Comparison"
-      metaDescription="Compare Pinklights with dating apps like Tinder and Bumble. Direct WhatsApp contact vs algorithm matching — find what suits you."
+      metaTitle="Pinklights vs Dating Apps - Honest Comparison"
+      metaDescription="Compare Pinklights with dating apps like Tinder and Bumble. Direct WhatsApp contact vs algorithm matching. Find what suits you."
       url="/compare/pinklights-vs-dating-apps"
       breadcrumbs={[
         { name: 'Compare', url: '/compare' },
@@ -19,7 +19,7 @@ const VsDatingApps = () => {
         { title: 'How It Works', description: 'A step-by-step guide to using Pinklights.', url: '/guides/how-it-works' },
       ]}
       ctaHeadline="See the Difference for Yourself"
-      ctaDescription="Browse real profiles across Belgium — no sign-up, no swiping, no algorithms."
+      ctaDescription="Browse real profiles across Belgium. No sign-up, no swiping, no algorithms."
     >
       <p className="text-muted-foreground leading-relaxed">
         If you are exploring ways to meet people in Belgium, you have likely considered both dating apps and companion platforms. Each serves a different purpose, and neither is universally better than the other. This comparison lays out the key differences between Pinklights and mainstream dating apps so you can decide which approach fits your needs.
@@ -27,11 +27,11 @@ const VsDatingApps = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-3">How You Discover People</h2>
       <p className="text-muted-foreground leading-relaxed">
-        Dating apps like Tinder and Bumble use algorithm-driven matching. You create a profile, set preferences, and the app shows you potential matches one at a time. You swipe right or left, and a conversation only starts when both people express interest. The algorithm decides what you see and when — your visibility depends on factors like activity level and profile completeness.
+        Dating apps like Tinder and Bumble use algorithm-driven matching. You create a profile, set preferences, and the app shows you potential matches one at a time. You swipe right or left, and a conversation only starts when both people express interest. The algorithm decides what you see and when, and your visibility depends on factors like activity level and profile completeness.
         {/* <!-- TODO: verify --> specific algorithm factors may vary by app */}
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
-        Pinklights works differently. There is no matching algorithm and no swiping. You browse all available profiles openly, filter by location and preferences, and view detailed profiles with photos and descriptions. You choose who to contact — the platform does not make that decision for you.
+        Pinklights works differently. There is no matching algorithm and no swiping. You browse all available profiles openly, filter by location and preferences, and view detailed profiles with photos and descriptions. You choose who to contact. The platform does not make that decision for you.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-3">How You Make Contact</h2>
@@ -40,7 +40,7 @@ const VsDatingApps = () => {
         {/* <!-- TODO: verify --> messaging limits vary by app and subscription tier */}
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
-        On Pinklights, contact happens directly via WhatsApp. When you find a profile that interests you, the WhatsApp number is available on the profile page. You reach out directly — there is no in-app messaging, no credits to spend on conversations, and no intermediary. This makes the process faster and more personal.
+        On Pinklights, contact happens directly via WhatsApp. When you find a profile that interests you, the WhatsApp number is available on the profile page. You reach out directly. There is no in-app messaging, no credits to spend on conversations, and no intermediary. This makes the process faster and more personal.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-3">Account Requirements</h2>
@@ -53,7 +53,7 @@ const VsDatingApps = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-3">Photos and Profile Quality</h2>
       <p className="text-muted-foreground leading-relaxed">
-        Dating apps show limited information per profile — typically a few photos and a short bio. The focus is on quick impressions and fast swiping rather than detailed information. Profile depth varies widely depending on how much effort the user has invested.
+        Dating apps show limited information per profile, typically a few photos and a short bio. The focus is on quick impressions and fast swiping rather than detailed information. Profile depth varies widely depending on how much effort the user has invested.
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
         Pinklights profiles are designed to be comprehensive. Each profile includes multiple photos, physical details, a written bio, availability, and service information. This gives you a clearer picture before making contact, which leads to more informed and respectful conversations.
@@ -71,7 +71,7 @@ const VsDatingApps = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-3">The Bottom Line</h2>
       <p className="text-muted-foreground leading-relaxed">
-        Dating apps and Pinklights serve different purposes. Dating apps are built around mutual discovery and romantic potential. Pinklights is built around direct access and informed choice. Neither is inherently better — it depends on what you are looking for. If you value being able to browse freely, see detailed profiles, and make direct contact without barriers, Pinklights is worth exploring.
+        Dating apps and Pinklights serve different purposes. Dating apps are built around mutual discovery and romantic potential. Pinklights is built around direct access and informed choice. Neither is inherently better; it depends on what you are looking for. If you value being able to browse freely, see detailed profiles, and make direct contact without barriers, Pinklights is worth exploring.
       </p>
     </ContentPageTemplate>
   );

@@ -9,7 +9,7 @@ const AntwerpPage = () => {
       metaTitle="Meet Companions in Antwerp | Pinklights.be"
       metaDescription="Connect with premium companions in Antwerp. Discover discreet meetups near the fashion district, Eilandje, and the city's vibrant nightlife scene."
       heroHeadline="Meet Someone Special in Antwerp"
-      heroSubtext="Belgium's fashion capital offers the perfect backdrop for unforgettable encounters — from waterfront cocktails at the Eilandje to intimate dinners in the historic centre."
+      heroSubtext="Belgium's fashion capital offers the perfect backdrop for unforgettable encounters, from waterfront cocktails at the Eilandje to intimate dinners in the historic centre."
       sections={[
         {
           heading: 'Why Antwerp Is Belgium\'s Most Magnetic City',
@@ -17,15 +17,15 @@ const AntwerpPage = () => {
         },
         {
           heading: 'The Best Neighbourhoods for a Memorable Evening',
-          text: 'The Eilandje — Antwerp\'s revitalised harbour district — has transformed into one of Belgium\'s most sought-after evening destinations. The MAS museum glows against the water at night, and the surrounding terraces fill with well-dressed crowds as the sun sets. For something more bohemian, Zurenborg\'s art nouveau streets offer intimate wine bars and bistros where conversation flows as easily as the drinks. The historic centre around the Grote Markt and Groenplaats remains a classic choice for dinner, with cathedral views providing a dramatic backdrop. And for those who prefer a livelier scene, the bars along the Ossenmarkt and Kloosterstraat keep Antwerp\'s reputation for exceptional nightlife fully intact.',
+          text: 'The Eilandje, Antwerp\'s revitalised harbour district, has transformed into one of Belgium\'s most sought-after evening destinations. The MAS museum glows against the water at night, and the surrounding terraces fill with well-dressed crowds as the sun sets. For something more bohemian, Zurenborg\'s art nouveau streets offer intimate wine bars and bistros where conversation flows as easily as the drinks. The historic centre around the Grote Markt and Groenplaats remains a classic choice for dinner, with cathedral views providing a dramatic backdrop. And for those who prefer a livelier scene, the bars along the Ossenmarkt and Kloosterstraat keep Antwerp\'s reputation for exceptional nightlife fully intact.',
         },
         {
           heading: 'A City That Values Discretion and Style',
-          text: 'Antwerp\'s culture prizes individuality and understated elegance. The city that produced Dries Van Noten and the Antwerp Six understands that real style is about confidence, not flash. This sensibility extends to how people connect here — with sophistication and mutual respect. Pinklights.be reflects that same ethos: a platform designed for people who value quality encounters in a city that rewards good taste. Whether you\'re meeting at a Michelin-starred restaurant in the Sint-Andries quarter or sharing a sunset walk along the Left Bank, Antwerp provides settings that elevate every interaction.',
+          text: 'Antwerp\'s culture prizes individuality and understated elegance. The city that produced Dries Van Noten and the Antwerp Six understands that real style is about confidence, not flash. This sensibility extends to how people connect here, with sophistication and mutual respect. Pinklights.be reflects that same ethos: a platform designed for people who value quality encounters in a city that rewards good taste. Whether you\'re meeting at a Michelin-starred restaurant in the Sint-Andries quarter or sharing a sunset walk along the Left Bank, Antwerp provides settings that elevate every interaction.',
         },
         {
           heading: 'Connecting in Antwerp Through Pinklights.be',
-          text: 'Navigating a new city — or rediscovering your own — is always better with the right company. Pinklights.be makes it straightforward to connect with verified companions in Antwerp who know the city\'s hidden gems and share your appetite for memorable experiences. Our platform prioritises privacy and authenticity, ensuring that every introduction leads to a genuine encounter. From business travellers spending a few nights near the Central Station to residents seeking fresh connections in their own backyard, Pinklights.be bridges the gap between curiosity and a truly enjoyable evening in one of Europe\'s most underrated cities.',
+          text: 'Navigating a new city, or rediscovering your own, is always better with the right company. Pinklights.be makes it straightforward to connect with verified companions in Antwerp who know the city\'s hidden gems and share your appetite for memorable experiences. Our platform prioritises privacy and authenticity, ensuring that every introduction leads to a genuine encounter. From business travellers spending a few nights near the Central Station to residents seeking fresh connections in their own backyard, Pinklights.be bridges the gap between curiosity and a truly enjoyable evening in one of Europe\'s most underrated cities.',
         },
       ]}
       faqItems={[

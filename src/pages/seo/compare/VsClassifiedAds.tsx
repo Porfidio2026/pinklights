@@ -5,8 +5,8 @@ const VsClassifiedAds = () => {
   return (
     <ContentPageTemplate
       title="Pinklights vs Classified Ad Sites"
-      metaTitle="Pinklights vs Classified Ads — Safety & Quality"
-      metaDescription="Compare Pinklights with classified ad sites. Curated profiles and verification vs open posting — see which offers more safety and quality."
+      metaTitle="Pinklights vs Classified Ads - Safety and Quality"
+      metaDescription="Compare Pinklights with classified ad sites. Curated profiles and verification vs open posting. See which offers more safety and quality."
       url="/compare/pinklights-vs-classified-ads"
       breadcrumbs={[
         { name: 'Compare', url: '/compare' },
@@ -19,7 +19,7 @@ const VsClassifiedAds = () => {
         { title: 'Best Platforms Belgium', description: 'What to look for in a companion platform in Belgium.', url: '/compare/best-platforms-belgium' },
       ]}
       ctaHeadline="Experience the Difference"
-      ctaDescription="Browse curated, verified profiles across Belgium — quality over quantity."
+      ctaDescription="Browse curated, verified profiles across Belgium. Quality over quantity."
     >
       <p className="text-muted-foreground leading-relaxed">
         Classified ad sites have been a traditional way to discover companions in Belgium and across Europe. They offer wide reach and are often free to use. However, they come with well-known trade-offs around safety, quality, and trust. This comparison examines how Pinklights differs from classified ad platforms and where each approach has its strengths.
@@ -27,7 +27,7 @@ const VsClassifiedAds = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-3">Profile Quality and Curation</h2>
       <p className="text-muted-foreground leading-relaxed">
-        Classified ad sites typically allow anyone to post a listing with minimal requirements. Ads are often text-heavy with few photos, and there is little standardisation in how information is presented. The quality of listings varies enormously — some are detailed and genuine, while others are vague, outdated, or misleading.
+        Classified ad sites typically allow anyone to post a listing with minimal requirements. Ads are often text-heavy with few photos, and there is little standardisation in how information is presented. The quality of listings varies enormously; some are detailed and genuine, while others are vague, outdated, or misleading.
         {/* <!-- TODO: verify --> specific classified site policies may vary */}
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
@@ -45,15 +45,15 @@ const VsClassifiedAds = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-3">Safety and Moderation</h2>
       <p className="text-muted-foreground leading-relaxed">
-        Safety is a significant differentiator. Classified ad sites generally operate with minimal moderation — ads are posted and left to stand unless someone reports them. There is often no mechanism to ban problematic users, and the same person can post repeatedly under different identities.
+        Safety is a significant differentiator. Classified ad sites generally operate with minimal moderation. Ads are posted and left to stand unless someone reports them. There is often no mechanism to ban problematic users, and the same person can post repeatedly under different identities.
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
-        Pinklights has built-in safety features including profile moderation, a reporting system, and the ability to ban users who violate platform standards. User data is stored with encrypted infrastructure and row-level security policies. Privacy controls let profile owners decide what information to display and how to be contacted.
+        Pinklights has built-in safety features including profile moderation, a reporting system, and the ability to ban users who violate platform standards. User data is stored with encrypted infrastructure and strict access controls. Privacy controls let profile owners decide what information to display and how to be contacted.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-3">Search and Discovery</h2>
       <p className="text-muted-foreground leading-relaxed">
-        Classified sites typically offer basic search — by category, region, and sometimes keywords. The browsing experience can feel cluttered, with ads of varying quality mixed together. Finding what you are looking for often requires scrolling through many irrelevant listings.
+        Classified sites typically offer basic search by category, region, and sometimes keywords. The browsing experience can feel cluttered, with ads of varying quality mixed together. Finding what you are looking for often requires scrolling through many irrelevant listings.
       </p>
       <p className="text-muted-foreground leading-relaxed mt-3">
         Pinklights provides location-based search with distance filters (up to 50 km), along with preference filters for appearance, service type, and other details. The search experience is designed to surface relevant profiles quickly so you spend less time scrolling and more time finding the right connection.

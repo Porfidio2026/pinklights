@@ -20,7 +20,7 @@ const COMPARISONS = [
   {
     title: 'Best Platforms Belgium 2026',
     slug: 'best-platforms-belgium',
-    description: 'What to look for in a companion platform in Belgium — safety, verification, ease of contact, and privacy.',
+    description: 'What to look for in a companion platform in Belgium: safety, verification, ease of contact, and privacy.',
   },
 ];
 
@@ -44,17 +44,17 @@ const CompareHub = () => {
             Compare Companion Platforms
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Choosing the right platform matters. Whether you are considering a dating app, a classified ad site, or a dedicated companion platform like Pinklights, each option has distinct strengths and trade-offs. Our comparison guides break down the differences honestly so you can make an informed decision based on what matters most to you — safety, directness, privacy, or reach.
+            Choosing the right platform matters. Whether you are considering a dating app, a classified ad site, or a dedicated companion platform like Pinklights, each option has distinct strengths and trade-offs. Our comparison guides break down the differences honestly so you can make an informed decision based on what matters most to you: safety, directness, privacy, or reach.
           </p>
         </header>
 
         <Card className="p-8 prose prose-sm max-w-none mb-8">
           <h2 className="text-xl font-semibold mb-3">Why Comparisons Matter</h2>
           <p className="text-muted-foreground leading-relaxed">
-            The landscape of companion platforms in Belgium includes everything from mainstream dating apps to niche classified sites. Each serves a different purpose and audience. Dating apps excel at romantic connections but rely heavily on algorithms and in-app messaging. Classified ads offer wide reach but often lack verification and safety features. Pinklights sits in a specific space — curated profiles, direct WhatsApp contact, and no account required to browse.
+            The landscape of companion platforms in Belgium includes everything from mainstream dating apps to niche classified sites. Each serves a different purpose and audience. Dating apps excel at romantic connections but rely heavily on algorithms and in-app messaging. Classified ads offer wide reach but often lack verification and safety features. Pinklights sits in a specific space: curated profiles, direct WhatsApp contact, and no account required to browse.
           </p>
           <p className="text-muted-foreground leading-relaxed mt-3">
-            We believe in transparency, which is why these comparisons acknowledge the strengths of other approaches alongside our own. The best platform for you depends on what you are looking for. Browse the comparisons below to see where Pinklights fits — and where another option might serve you better.
+            We believe in transparency, which is why these comparisons acknowledge the strengths of other approaches alongside our own. The best platform for you depends on what you are looking for. Browse the comparisons below to see where Pinklights fits, and where another option might serve you better.
           </p>
         </Card>
 

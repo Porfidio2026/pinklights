@@ -15,7 +15,7 @@ const GUIDES = [
   {
     title: 'Safety Tips',
     slug: 'safety-tips',
-    description: 'Ten practical tips for staying safe when meeting someone new — from choosing the right venue to protecting your privacy.',
+    description: 'Ten practical tips for staying safe when meeting someone new, from choosing the right venue to protecting your privacy.',
   },
   {
     title: 'First Meeting Guide',
@@ -30,7 +30,7 @@ const GUIDES = [
   {
     title: 'Profile Tips',
     slug: 'profile-tips',
-    description: 'Best practices for profile creators — from choosing the right photos to writing a bio that stands out.',
+    description: 'Best practices for profile creators, from choosing the right photos to writing a bio that stands out.',
   },
 ];
 
@@ -61,10 +61,10 @@ const GuidesHub = () => {
         <Card className="p-8 prose prose-sm max-w-none mb-8">
           <h2 className="text-xl font-semibold mb-3">Why We Created These Guides</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Pinklights is built around simplicity — no accounts needed to browse, direct WhatsApp contact, and real profiles with clear photos. But simplicity does not mean you should skip preparation. These guides help you navigate the platform confidently, whether you are browsing for the first time, creating your own profile, or visiting Belgium from abroad.
+            Pinklights is built around simplicity: no accounts needed to browse, direct WhatsApp contact, and real profiles with clear photos. But simplicity does not mean you should skip preparation. These guides help you navigate the platform confidently, whether you are browsing for the first time, creating your own profile, or visiting Belgium from abroad.
           </p>
           <p className="text-muted-foreground leading-relaxed mt-3">
-            We believe in transparency and informed choices. Every guide below is written with your safety, comfort, and privacy in mind. Take a few minutes to read the ones that apply to you — it can make all the difference.
+            We believe in transparency and informed choices. Every guide below is written with your safety, comfort, and privacy in mind. Take a few minutes to read the ones that apply to you. It can make all the difference.
           </p>
         </Card>
 
