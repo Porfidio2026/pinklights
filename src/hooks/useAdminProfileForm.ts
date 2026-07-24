@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeFormData } from '@/utils/sanitize';
 import { ProfileFormData } from '@/hooks/useProfileForm';
+import { insertDefaultAvailability } from '@/utils/availabilityDefaults';
 
 const EMPTY_FORM: ProfileFormData = {
   full_name: '',
@@ -108,6 +109,17 @@ export const useAdminProfileForm = (editId?: string) => {
           .single();
 
         if (error) throw error;
+
+        // Set 24/7 availability for newly created profiles
+        if (profile?.id) {
+          try {
+            await insertDefaultAvailability(profile.id);
+          } catch (availErr) {
+            console.error('Failed to set default availability:', availErr);
+            // Non-blocking – profile was saved successfully
+          }
+        }
+
         return profile;
       }
     } catch (error: any) {

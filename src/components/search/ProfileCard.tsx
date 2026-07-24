@@ -2,6 +2,7 @@
 import React from 'react';
 import { ProfilePictures } from '@/components/profile/ProfilePictures';
 import { MapPin, Clock } from 'lucide-react';
+import { extractCity as extractCityUtil } from '@/utils/locationUtils';
 
 interface Profile {
   id: string;
@@ -44,15 +45,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
   const availability = getAvailabilityStatusDisplay(profile.availability_status);
 
-  const extractCity = (fullLocation?: string | null): string => {
-    if (!fullLocation) return '';
-    const parts = fullLocation.split(',').map(part => part.trim());
-    return parts.length > 1 ? parts[1] : parts[0];
-  };
-
   const showDistance = hasUserLocation && typeof profile.distance_km === 'number' && profile.distance_km > 0;
   const showDriveTime = hasUserLocation && typeof profile.drive_minutes === 'number' && profile.drive_minutes > 0;
-  const cityName = extractCity(profile.location);
+  const cityName = profile.location ? extractCityUtil(profile.location) : '';
 
   return (
     <div

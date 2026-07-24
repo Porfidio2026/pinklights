@@ -4,6 +4,7 @@ import { supabase, handleLogout } from '@/lib/supabase';
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 import { sanitizeFormData } from '@/utils/sanitize';
+import { insertDefaultAvailability } from '@/utils/availabilityDefaults';
 
 export interface ProfileFormData {
   id?: string;
@@ -163,9 +164,18 @@ export const useProfileForm = () => {
       }
 
       if (result.error) throw result.error;
-      
+
       // Store the profile data in localStorage to persist through navigation
       if (result.data) {
+        // Set 24/7 availability for newly created profiles
+        if (!existingProfile && result.data.id) {
+          try {
+            await insertDefaultAvailability(result.data.id);
+          } catch (availErr) {
+            console.error('Failed to set default availability:', availErr);
+            // Non-blocking – profile was saved successfully
+          }
+        }
         localStorage.setItem('profileData', JSON.stringify(result.data));
         return result.data;
       }

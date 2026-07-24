@@ -2,6 +2,7 @@
 import React from 'react';
 import { MapPin, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { extractCity } from '@/utils/locationUtils';
 
 interface ProfileLocationProps {
   hasUserLocation: boolean;
@@ -22,19 +23,6 @@ export const ProfileLocation: React.FC<ProfileLocationProps> = ({
   const showDistance = hasUserLocation && typeof distance_km === 'number' && distance_km > 0;
   const showDriveTime = hasUserLocation && typeof drive_minutes === 'number' && drive_minutes > 0;
   const showCity = !hasUserLocation || (!showDistance && !showDriveTime);
-
-  // Extract city from full location string
-  const extractCity = (fullLocation?: string | null): string => {
-    if (!fullLocation) return 'Unknown location';
-    
-    // Try to extract city from Google Maps formatted address
-    // Common format: "Street Address, City, State/Province, Postal Code, Country"
-    const parts = fullLocation.split(',').map(part => part.trim());
-    
-    // If we have multiple parts, the city is usually the second part
-    // But for safety, we'll use the first part if there's only one
-    return parts.length > 1 ? parts[1] : parts[0];
-  };
 
   // For profile card display (compact variant)
   if (variant === 'compact') {
