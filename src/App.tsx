@@ -51,6 +51,17 @@ const AdminCreateProfile = React.lazy(() => import('./pages/admin/AdminCreatePro
 const AdminInvoices = React.lazy(() => import('./pages/admin/AdminInvoices'));
 const MyInvoices = React.lazy(() => import('./pages/MyInvoices'));
 
+// SEO pages
+const FindHub = React.lazy(() => import('./pages/seo/FindHub'));
+const CityAntwerp = React.lazy(() => import('./pages/seo/cities/Antwerp'));
+const CityBrussels = React.lazy(() => import('./pages/seo/cities/Brussels'));
+const CityGhent = React.lazy(() => import('./pages/seo/cities/Ghent'));
+const CityBruges = React.lazy(() => import('./pages/seo/cities/Bruges'));
+const CityLiege = React.lazy(() => import('./pages/seo/cities/Liege'));
+const CityLeuven = React.lazy(() => import('./pages/seo/cities/Leuven'));
+const CityCharleroi = React.lazy(() => import('./pages/seo/cities/Charleroi'));
+const CityNamur = React.lazy(() => import('./pages/seo/cities/Namur'));
+
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
@@ -77,6 +88,17 @@ function App() {
                 <Route path="/claim-profile/:id" element={<ClaimProfile />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<TermsOfService />} />
+
+                {/* SEO pages — cities */}
+                <Route path="/find" element={<FindHub />} />
+                <Route path="/find/antwerp" element={<CityAntwerp />} />
+                <Route path="/find/brussels" element={<CityBrussels />} />
+                <Route path="/find/ghent" element={<CityGhent />} />
+                <Route path="/find/bruges" element={<CityBruges />} />
+                <Route path="/find/liege" element={<CityLiege />} />
+                <Route path="/find/leuven" element={<CityLeuven />} />
+                <Route path="/find/charleroi" element={<CityCharleroi />} />
+                <Route path="/find/namur" element={<CityNamur />} />
 
                 {/* Protected profile routes */}
                 <Route path="/create-profile" element={<RequireAuth><CreateProfile /></RequireAuth>} />
