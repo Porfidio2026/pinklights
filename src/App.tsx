@@ -51,7 +51,7 @@ const AdminCreateProfile = React.lazy(() => import('./pages/admin/AdminCreatePro
 const AdminInvoices = React.lazy(() => import('./pages/admin/AdminInvoices'));
 const MyInvoices = React.lazy(() => import('./pages/MyInvoices'));
 
-// SEO pages
+// SEO pages — cities
 const FindHub = React.lazy(() => import('./pages/seo/FindHub'));
 const CityAntwerp = React.lazy(() => import('./pages/seo/cities/Antwerp'));
 const CityBrussels = React.lazy(() => import('./pages/seo/cities/Brussels'));
@@ -61,6 +61,15 @@ const CityLiege = React.lazy(() => import('./pages/seo/cities/Liege'));
 const CityLeuven = React.lazy(() => import('./pages/seo/cities/Leuven'));
 const CityCharleroi = React.lazy(() => import('./pages/seo/cities/Charleroi'));
 const CityNamur = React.lazy(() => import('./pages/seo/cities/Namur'));
+
+// SEO pages — guides + FAQ
+const GuidesHub = React.lazy(() => import('./pages/seo/GuidesHub'));
+const GuideHowItWorks = React.lazy(() => import('./pages/seo/guides/HowItWorks'));
+const GuideSafetyTips = React.lazy(() => import('./pages/seo/guides/SafetyTips'));
+const GuideFirstMeeting = React.lazy(() => import('./pages/seo/guides/FirstMeeting'));
+const GuideForVisitors = React.lazy(() => import('./pages/seo/guides/ForVisitors'));
+const GuideProfileTips = React.lazy(() => import('./pages/seo/guides/ProfileTips'));
+const FAQ = React.lazy(() => import('./pages/seo/FAQ'));
 
 const queryClient = new QueryClient();
 
@@ -99,6 +108,15 @@ function App() {
                 <Route path="/find/leuven" element={<CityLeuven />} />
                 <Route path="/find/charleroi" element={<CityCharleroi />} />
                 <Route path="/find/namur" element={<CityNamur />} />
+
+                {/* SEO pages — guides + FAQ */}
+                <Route path="/guides" element={<GuidesHub />} />
+                <Route path="/guides/how-it-works" element={<GuideHowItWorks />} />
+                <Route path="/guides/safety-tips" element={<GuideSafetyTips />} />
+                <Route path="/guides/first-meeting" element={<GuideFirstMeeting />} />
+                <Route path="/guides/for-visitors" element={<GuideForVisitors />} />
+                <Route path="/guides/profile-tips" element={<GuideProfileTips />} />
+                <Route path="/faq" element={<FAQ />} />
 
                 {/* Protected profile routes */}
                 <Route path="/create-profile" element={<RequireAuth><CreateProfile /></RequireAuth>} />
