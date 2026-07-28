@@ -24,9 +24,10 @@ export type Result<T> =
 
 // ── Acatha session (cached token) ────────────────────────────────────
 export interface AcathaSession {
-  token: string;
-  sessionId: string;
-  companyId: string;
+  token: string;        // IdToken from Cognito
+  companyToken: string;  // Company authorization token
+  sessionId: string;     // PHPSESSID from autenticar
+  companyId: string;     // Company code
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────
@@ -64,11 +65,13 @@ export async function acathaLogin(
 
   if (cached) {
     console.log('Using cached Acatha session');
+    const [companyToken, phpSessionId] = (cached.session_id || '').split('|');
     return {
       ok: true,
       data: {
         token: cached.token,
-        sessionId: cached.session_id,
+        companyToken,
+        sessionId: phpSessionId || '',
         companyId: cached.company_id,
       },
     };
@@ -88,11 +91,11 @@ export async function acathaLogin(
     });
     const loginData = await loginRes.json();
 
-    if (loginData.error || !loginData.auto?.IdToken) {
+    if (loginData.error || !loginData.auto?.token?.AuthenticationResult?.IdToken) {
       return { ok: false, error: `Cognito login failed: ${loginData.message || 'unknown error'}` };
     }
 
-    const idToken: string = loginData.auto.IdToken;
+    const idToken: string = loginData.auto.token.AuthenticationResult.IdToken;
 
     // Step 2: Validate token
     const checkRes = await fetch(acathaUrl('/login/mailCheckout'), {
@@ -105,29 +108,33 @@ export async function acathaLogin(
       return { ok: false, error: `Token validation failed: ${checkData.message || 'unknown error'}` };
     }
 
-    // Step 3: Authenticate and get companies
+    // Step 3: Authenticate and get companies (capture PHPSESSID from response)
     const authRes = await fetch(acathaUrl('/login/autenticar'), {
-      method: 'GET',
+      method: 'POST',
       headers: { ...authHeaders(), 'x-csrf-token': idToken },
     });
+    const setCookie = authRes.headers.get('set-cookie') || '';
+    const phpSessionMatch = setCookie.match(/PHPSESSID=([^;]+)/);
+    const phpSessionId = phpSessionMatch ? phpSessionMatch[1] : '';
     const authData = await authRes.json();
 
     if (authData.error) {
       return { ok: false, error: `Autenticar failed: ${authData.message || 'unknown error'}` };
     }
 
-    // Step 4: Select company — use first available or match configured company
-    // TODO: Confirm company selection logic with Acatha once credentials work
-    const companies = authData.auto || [];
-    const company = companies[0];
+    // Step 4: Select company from the empresas list
+    const empresas = authData.auto?.empresas || [];
+    const company = empresas[0];
     const companyId = company?.codigo?.toString() || '';
-    const sessionId = authData.sessionId || '';
+    const companyToken = company?.token || '';
 
-    // Cache the session (valid for 50 minutes to be safe within a 60-min window)
-    const expiresAt = new Date(Date.now() + 50 * 60 * 1000).toISOString();
+    console.log(`Acatha auth: company=${company?.nombre}, id=${companyId}, phpSession=${phpSessionId ? 'yes' : 'no'}`);
+
+    // Cache the session (IdToken valid for 24h, cache for 12h to be safe)
+    const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
     await supabase.from('acatha_sessions').insert({
       token: idToken,
-      session_id: sessionId,
+      session_id: `${companyToken}|${phpSessionId}`,
       company_id: companyId,
       expires_at: expiresAt,
     });
@@ -140,7 +147,7 @@ export async function acathaLogin(
 
     return {
       ok: true,
-      data: { token: idToken, sessionId, companyId },
+      data: { token: idToken, companyToken, sessionId: phpSessionId, companyId },
     };
   } catch (err) {
     return { ok: false, error: `Acatha login error: ${err instanceof Error ? err.message : String(err)}` };
@@ -165,7 +172,9 @@ export async function getOrCreateClient(
     const headers = {
       ...authHeaders(),
       'x-csrf-token': session.token,
+      'authorization': session.companyToken,
       'Session-ID': session.sessionId,
+      'Cookie': `PHPSESSID=${session.sessionId}`,
     };
 
     // TODO: Replace with actual Acatha client lookup/create endpoint
@@ -266,7 +275,9 @@ export async function createDTE(
     const headers = {
       ...authHeaders(),
       'x-csrf-token': session.token,
+      'authorization': session.companyToken,
       'Session-ID': session.sessionId,
+      'Cookie': `PHPSESSID=${session.sessionId}`,
     };
 
     const body = buildDTEBody(request);
@@ -320,7 +331,9 @@ export async function getDTEPdf(
     const headers = {
       ...authHeaders(),
       'x-csrf-token': session.token,
+      'authorization': session.companyToken,
       'Session-ID': session.sessionId,
+      'Cookie': `PHPSESSID=${session.sessionId}`,
     };
 
     // TODO: Replace with actual PDF endpoint
