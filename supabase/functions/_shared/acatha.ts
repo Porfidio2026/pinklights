@@ -1,11 +1,21 @@
 /**
  * Acatha SIGNUM API v4 — abstraction layer for DTE invoice generation.
  *
- * Auth flow: cognito/login → mailCheckout → autenticar → select company
- * DTE flow:  create/lookup client → create DTE (venta) → retrieve PDF
+ * Confirmed auth flow:
+ *   1. cognito/login → IdToken
+ *   2. login/mailCheckout → validate token
+ *   3. login/autenticar → company list + company token
+ *   4. sessions/deactivateAll → clear old sessions
+ *   5. sessions/store → register UUID session
  *
- * All Acatha-specific request/response shapes are isolated here so the
- * rest of the codebase only deals with our own types.
+ * DTE flow:
+ *   1. clientes/clientes/ingresar → create/update client
+ *   2. autorizacion/extraer → get sequential number
+ *   3. ventas/sv/ingresar → create sale/invoice
+ *   4. facturacion-electronica/consumidor-final → send to Hacienda
+ *   5. ventas/registerAuth → register Hacienda response
+ *   6. generales/pdfGenerate → generate PDF
+ *   7. ventas/obtenerRide → download PDF
  */
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
@@ -22,22 +32,31 @@ export type Result<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
-// ── Acatha session (cached token) ────────────────────────────────────
+// ── Acatha session ───────────────────────────────────────────────────
 export interface AcathaSession {
-  token: string;        // IdToken from Cognito
+  token: string;         // IdToken from Cognito
   companyToken: string;  // Company authorization token
-  sessionId: string;     // PHPSESSID from autenticar
-  companyId: string;     // Company code
+  sessionId: string;     // Self-generated UUID registered via sessions/store
+  companyId: string;     // Company code (e.g. "1202")
+  companyRuc: string;    // Company tax ID
+  companyNrc: string;    // Company NRC
+  companyName: string;   // Company commercial name
+  localCode: string;     // Establishment/local code
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────
 
 function acathaUrl(path: string): string {
-  const base = env('ACATHA_BASE_URL'); // e.g. https://devsv.elsalvador.acatha.io
+  const base = env('ACATHA_BASE_URL'); // https://dev.acatha.com
   return `${base}/amfphp/Services/SIGNUM/API/v4${path}`;
 }
 
-function authHeaders(): Record<string, string> {
+function haciendaUrl(path: string): string {
+  const base = env('ACATHA_HACIENDA_URL'); // https://dev.acatha.com:3000/md-sv
+  return `${base}/${path}`;
+}
+
+function baseHeaders(): Record<string, string> {
   return {
     'client-id': env('ACATHA_CLIENT_ID'),
     'secret-key': env('ACATHA_SECRET_KEY'),
@@ -45,11 +64,22 @@ function authHeaders(): Record<string, string> {
   };
 }
 
+/** Headers for authenticated API calls (after session is established) */
+function sessionHeaders(session: AcathaSession): Record<string, string> {
+  return {
+    ...baseHeaders(),
+    'x-csrf-token': session.token,
+    'authorization': session.companyToken,
+    'Session-ID': session.sessionId,
+  };
+}
+
 // ── 1. Authentication ────────────────────────────────────────────────
 
 /**
  * Full Acatha auth flow with token caching.
- * Reuses a cached token if it hasn't expired yet (50-minute window).
+ *
+ * Flow: cognito/login → mailCheckout → autenticar → deactivateAll → sessions/store
  */
 export async function acathaLogin(
   supabase: SupabaseClient,
@@ -65,23 +95,28 @@ export async function acathaLogin(
 
   if (cached) {
     console.log('Using cached Acatha session');
-    const [companyToken, phpSessionId] = (cached.session_id || '').split('|');
+    // session_id stores: companyToken|sessionUUID|ruc|nrc|companyName|localCode
+    const parts = (cached.session_id || '').split('|');
     return {
       ok: true,
       data: {
         token: cached.token,
-        companyToken,
-        sessionId: phpSessionId || '',
+        companyToken: parts[0] || '',
+        sessionId: parts[1] || '',
         companyId: cached.company_id,
+        companyRuc: parts[2] || '',
+        companyNrc: parts[3] || '',
+        companyName: parts[4] || '',
+        localCode: parts[5] || '',
       },
     };
   }
 
   try {
-    // Step 1: Cognito login → get IdToken
+    // Step 1: Cognito login
     const loginRes = await fetch(acathaUrl('/cognito/login'), {
       method: 'POST',
-      headers: authHeaders(),
+      headers: baseHeaders(),
       body: JSON.stringify({
         AuthParameters: {
           user: env('ACATHA_USER'),
@@ -94,52 +129,80 @@ export async function acathaLogin(
     if (loginData.error || !loginData.auto?.token?.AuthenticationResult?.IdToken) {
       return { ok: false, error: `Cognito login failed: ${loginData.message || 'unknown error'}` };
     }
-
     const idToken: string = loginData.auto.token.AuthenticationResult.IdToken;
 
     // Step 2: Validate token
     const checkRes = await fetch(acathaUrl('/login/mailCheckout'), {
-      method: 'GET',
-      headers: { ...authHeaders(), 'x-csrf-token': idToken },
+      headers: { ...baseHeaders(), 'x-csrf-token': idToken },
     });
     const checkData = await checkRes.json();
-
     if (checkData.error) {
       return { ok: false, error: `Token validation failed: ${checkData.message || 'unknown error'}` };
     }
 
-    // Step 3: Authenticate and get companies (capture PHPSESSID from response)
+    // Step 3: Authenticate and get companies
     const authRes = await fetch(acathaUrl('/login/autenticar'), {
       method: 'POST',
-      headers: { ...authHeaders(), 'x-csrf-token': idToken },
+      headers: { ...baseHeaders(), 'x-csrf-token': idToken },
     });
-    const setCookie = authRes.headers.get('set-cookie') || '';
-    const phpSessionMatch = setCookie.match(/PHPSESSID=([^;]+)/);
-    const phpSessionId = phpSessionMatch ? phpSessionMatch[1] : '';
     const authData = await authRes.json();
-
     if (authData.error) {
       return { ok: false, error: `Autenticar failed: ${authData.message || 'unknown error'}` };
     }
 
-    // Step 4: Select company from the empresas list
-    const empresas = authData.auto?.empresas || [];
-    const company = empresas[0];
-    const companyId = company?.codigo?.toString() || '';
-    const companyToken = company?.token || '';
+    const company = authData.auto?.empresas?.[0];
+    if (!company) {
+      return { ok: false, error: 'No company found in autenticar response' };
+    }
 
-    console.log(`Acatha auth: company=${company?.nombre}, id=${companyId}, phpSession=${phpSessionId ? 'yes' : 'no'}`);
+    const companyToken = company.token || '';
+    const companyId = company.codigo?.toString() || '';
+    const companyRuc = company.ruc || '';
+    const companyNrc = company.nrc || '';
+    const companyName = company.comercial || company.nombre || '';
+    const localCode = company.locales?.[0]?.codigo?.toString() || '';
+    const authHeadersObj = { ...baseHeaders(), 'x-csrf-token': idToken, 'authorization': companyToken };
 
-    // Cache the session (IdToken valid for 24h, cache for 12h to be safe)
+    // Step 4: Deactivate old sessions
+    await fetch(acathaUrl('/sessions/deactivateAll?dispositivo=pc'), {
+      method: 'DELETE',
+      headers: authHeadersObj,
+    });
+
+    // Step 5: Register new session with self-generated UUID
+    const sessionUUID = crypto.randomUUID();
+    const storeRes = await fetch(acathaUrl('/sessions/store'), {
+      method: 'POST',
+      headers: authHeadersObj,
+      body: JSON.stringify({
+        infoRegistro: {
+          dispositivo: 'pc',
+          identificadorSesion: sessionUUID,
+          empresa: parseInt(companyId),
+          ip: '0.0.0.0',
+          navegador: 'Pinklights-API',
+          sistemaOperativo: 'Linux',
+        },
+      }),
+    });
+    const storeData = await storeRes.json();
+    if (storeData.error) {
+      return { ok: false, error: `Session store failed: ${storeData.message || 'unknown error'}` };
+    }
+
+    console.log(`Acatha auth complete: company=${companyName}, id=${companyId}, session=${sessionUUID}`);
+
+    // Cache the session (IdToken valid 24h, cache for 12h)
     const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+    const sessionData = [companyToken, sessionUUID, companyRuc, companyNrc, companyName, localCode].join('|');
     await supabase.from('acatha_sessions').insert({
       token: idToken,
-      session_id: `${companyToken}|${phpSessionId}`,
+      session_id: sessionData,
       company_id: companyId,
       expires_at: expiresAt,
     });
 
-    // Clean up old sessions
+    // Clean up expired sessions
     await supabase
       .from('acatha_sessions')
       .delete()
@@ -147,7 +210,7 @@ export async function acathaLogin(
 
     return {
       ok: true,
-      data: { token: idToken, companyToken, sessionId: phpSessionId, companyId },
+      data: { token: idToken, companyToken, sessionId: sessionUUID, companyId, companyRuc, companyNrc, companyName, localCode },
     };
   } catch (err) {
     return { ok: false, error: `Acatha login error: ${err instanceof Error ? err.message : String(err)}` };
@@ -157,11 +220,9 @@ export async function acathaLogin(
 // ── 2. Client management ────────────────────────────────────────────
 
 /**
- * Create or look up a client (receptor) in Acatha for the invoice.
- *
- * TODO: Confirm exact endpoint and required fields when API access works.
- * The Swagger spec shows client-related endpoints but the exact DTE
- * client registration endpoint needs verification.
+ * Create or look up a client (receptor) in Acatha.
+ * Endpoint: POST /clientes/clientes/ingresar (codigo: 0 for new)
+ * Search:   GET  /clientes/clientes/listar
  */
 export async function getOrCreateClient(
   session: AcathaSession,
@@ -169,29 +230,52 @@ export async function getOrCreateClient(
   customerEmail: string,
 ): Promise<Result<{ clientId: string }>> {
   try {
-    const headers = {
-      ...authHeaders(),
-      'x-csrf-token': session.token,
-      'authorization': session.companyToken,
-      'Session-ID': session.sessionId,
-      'Cookie': `PHPSESSID=${session.sessionId}`,
-    };
+    const headers = sessionHeaders(session);
 
-    // TODO: Replace with actual Acatha client lookup/create endpoint
-    // Expected flow:
-    // 1. Search for existing client by email
-    // 2. If not found, create new client
-    // For now, return a placeholder that will be replaced when API is confirmed
+    // Search for existing client by email
+    const searchRes = await fetch(
+      acathaUrl(`/clientes/clientes/listar?identificacion=&nombre=${encodeURIComponent(customerEmail)}&isPaged=true&page=1&limit=5`),
+      { headers },
+    );
+    const searchData = await searchRes.json();
 
-    console.log(`[Acatha] Would create/lookup client: ${customerName} (${customerEmail})`);
+    if (!searchData.error && searchData.auto) {
+      const clients = Array.isArray(searchData.auto) ? searchData.auto : [];
+      const existing = clients.find((c: any) => c.email === customerEmail);
+      if (existing) {
+        console.log(`[Acatha] Found existing client: ${existing.codigo}`);
+        return { ok: true, data: { clientId: existing.codigo.toString() } };
+      }
+    }
 
-    // Placeholder — will be replaced with actual API call
-    return {
-      ok: true,
-      data: { clientId: 'pending-api-confirmation' },
-    };
+    // Create new client (codigo: 0 = new)
+    const createRes = await fetch(acathaUrl('/clientes/clientes/ingresar'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        infoRegistro: {
+          codigo: 0,
+          nombre: customerName,
+          comercial: customerName,
+          email: customerEmail,
+          identificacion: '',
+          tipoIdentificacion: '',
+          direccion: '',
+          telefono: '',
+        },
+      }),
+    });
+    const createData = await createRes.json();
+
+    if (createData.error) {
+      return { ok: false, error: `Client creation failed: ${createData.message || JSON.stringify(createData)}` };
+    }
+
+    const clientId = createData.auto?.codigo?.toString() || createData.auto?.toString() || '';
+    console.log(`[Acatha] Created client: ${clientId}`);
+    return { ok: true, data: { clientId } };
   } catch (err) {
-    return { ok: false, error: `Client creation error: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, error: `Client error: ${err instanceof Error ? err.message : String(err)}` };
   }
 }
 
@@ -200,7 +284,7 @@ export async function getOrCreateClient(
 interface DTEItem {
   description: string;
   quantity: number;
-  unitPrice: number; // in dollars
+  unitPrice: number;
   totalPrice: number;
 }
 
@@ -209,56 +293,18 @@ interface DTERequest {
   customerName: string;
   customerEmail: string;
   items: DTEItem[];
-  totalAmount: number; // in dollars
+  totalAmount: number;
 }
 
 /**
- * Build the DTE request body for Acatha.
+ * Create a DTE (Consumidor Final invoice) in Acatha and send to Hacienda.
  *
- * TODO: This is the most critical function to update once the exact
- * Acatha DTE endpoint and body schema are confirmed. The structure
- * below is based on the documentation navigation (Ingresar Venta DTE)
- * and common DTE patterns for El Salvador.
- */
-function buildDTEBody(req: DTERequest): Record<string, unknown> {
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-
-  // TODO: Replace this entire body with the confirmed Acatha schema
-  return {
-    infoRegistro: {
-      fecha: dateStr,
-      clienteCodigo: req.clientId,
-      // DTE type: 01 = Factura (Consumer Invoice)
-      tipoDte: '01',
-      condicionOperacion: 1, // 1 = Contado (cash)
-      items: req.items.map((item, i) => ({
-        numero: i + 1,
-        descripcion: item.description,
-        cantidad: item.quantity,
-        precioUnitario: item.unitPrice,
-        ventaGravada: item.totalPrice,
-      })),
-      resumen: {
-        totalGravada: req.totalAmount,
-        subTotalVentas: req.totalAmount,
-        montoTotalOperacion: req.totalAmount,
-        totalPagar: req.totalAmount,
-      },
-      receptor: {
-        nombre: req.customerName,
-        correo: req.customerEmail,
-      },
-    },
-  };
-}
-
-/**
- * Create a DTE (electronic tax document / invoice) in Acatha.
- *
- * TODO: Confirm the exact POST endpoint. The documentation references
- * "Ingresar Venta (DTE)" but the Swagger spec only shows /ordenes/save.
- * Likely a separate endpoint or a different Swagger spec for DTE operations.
+ * Steps:
+ *   1. Get sequential number (autorizacion/extraer)
+ *   2. Create sale (ventas/sv/ingresar)
+ *   3. Send to Hacienda (facturacion-electronica/consumidor-final)
+ *   4. Register auth (ventas/registerAuth)
+ *   5. Generate PDF (generales/pdfGenerate)
  */
 export async function createDTE(
   session: AcathaSession,
@@ -272,42 +318,152 @@ export async function createDTE(
   rawResponse: Record<string, unknown>;
 }>> {
   try {
-    const headers = {
-      ...authHeaders(),
-      'x-csrf-token': session.token,
-      'authorization': session.companyToken,
-      'Session-ID': session.sessionId,
-      'Cookie': `PHPSESSID=${session.sessionId}`,
-    };
+    const headers = sessionHeaders(session);
+    const invoiceUUID = crypto.randomUUID();
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0];
 
-    const body = buildDTEBody(request);
+    // Step 1: Get sequential authorization
+    const seqRes = await fetch(
+      acathaUrl(`/autorizacion/extraer?equipo=${encodeURIComponent(env('ACATHA_USER'))}`),
+      { headers },
+    );
+    const seqData = await seqRes.json();
 
-    console.log('[Acatha] Creating DTE with body:', JSON.stringify(body));
-
-    // TODO: Replace with actual DTE creation endpoint
-    // Expected: POST /amfphp/Services/SIGNUM/API/v4/ventas/save (or similar)
-    const res = await fetch(acathaUrl('/ventas/save'), {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json();
-
-    if (data.error) {
-      return { ok: false, error: `DTE creation failed: ${data.message || JSON.stringify(data)}` };
+    if (seqData.error) {
+      return { ok: false, error: `Sequential number failed: ${seqData.message || 'unknown'}` };
     }
 
-    // TODO: Map actual response fields once confirmed
+    const seq = seqData.auto || {};
+    const ptoEmision = seq.ptoemision || 'M001';
+    const establecimiento = seq.establecimiento || 'P001';
+    const numActual = seq.numActual || 1;
+    const secuencial = String(numActual).padStart(15, '0');
+    const controlNumber = `DTE-01-${ptoEmision}${establecimiento}-${secuencial}`;
+
+    // Step 2: Create sale
+    const saleBody = {
+      identificador: invoiceUUID,
+      tipodoc: '01', // Consumidor Final
+      tipo_emision: 1, // Electronic
+      local: session.localCode,
+      ambiente: '00', // 00 = test, 01 = production
+      emisor: {
+        nit: session.companyRuc,
+        nrc: session.companyNrc,
+        nombre: session.companyName,
+      },
+      comprador: {
+        nombre: request.customerName,
+        correo: request.customerEmail,
+      },
+      items: request.items.map((item, i) => ({
+        numItem: i + 1,
+        tipoItem: 2, // Service
+        descripcion: item.description,
+        cantidad: item.quantity,
+        precioUni: item.unitPrice,
+        ventaGravada: item.totalPrice,
+        codigo: '',
+        uniMedida: 99, // Other
+      })),
+      totales: {
+        totalGravada: request.totalAmount,
+        subTotalVentas: request.totalAmount,
+        montoTotalOperacion: request.totalAmount,
+        totalPagar: request.totalAmount,
+      },
+      formaPago: [{
+        codigo: '01', // Cash/electronic
+        montoPago: request.totalAmount,
+      }],
+      numeroControl: controlNumber,
+      codigoGeneracion: invoiceUUID,
+    };
+
+    const saleRes = await fetch(acathaUrl('/ventas/sv/ingresar'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(saleBody),
+    });
+    const saleData = await saleRes.json();
+
+    if (saleData.error) {
+      return { ok: false, error: `Sale creation failed: ${saleData.message || JSON.stringify(saleData)}` };
+    }
+
+    const dteId = saleData.auto?.codigo?.toString() || saleData.auto?.id?.toString() || invoiceUUID;
+
+    // Step 3: Send to Hacienda (test environment)
+    let selloRecibido = '';
+    try {
+      const haciendaRes = await fetch(haciendaUrl('facturacion-electronica/consumidor-final'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(saleBody),
+      });
+      const haciendaData = await haciendaRes.json();
+      selloRecibido = haciendaData.selloRecibido || '';
+      console.log(`[Acatha] Hacienda response: sello=${selloRecibido ? 'yes' : 'no'}`);
+    } catch (hErr) {
+      console.error('[Acatha] Hacienda submission failed (non-fatal):', hErr);
+    }
+
+    // Step 4: Register authorization if we got a sello
+    if (selloRecibido) {
+      try {
+        await fetch(acathaUrl('/ventas/registerAuth'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            codigo: dteId,
+            selloRecibido,
+            codigoGeneracion: invoiceUUID,
+          }),
+        });
+      } catch (raErr) {
+        console.error('[Acatha] registerAuth failed (non-fatal):', raErr);
+      }
+    }
+
+    // Step 5: Generate PDF
+    let pdfUrl: string | null = null;
+    try {
+      await fetch(acathaUrl('/generales/pdfGenerate'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          codigo: dteId,
+          template: 'SVRideFactura',
+        }),
+      });
+
+      // Get the PDF/JSON file URLs
+      const filesRes = await fetch(
+        acathaUrl(`/ventas/impresion?codigo=${dteId}`),
+        { headers },
+      );
+      const filesData = await filesRes.json();
+      if (!filesData.error && filesData.auto) {
+        pdfUrl = filesData.auto.pdf || filesData.auto.urlPdf || null;
+        if (pdfUrl && !pdfUrl.startsWith('http')) {
+          pdfUrl = `${env('ACATHA_BASE_URL')}${pdfUrl}`;
+        }
+      }
+    } catch (pdfErr) {
+      console.error('[Acatha] PDF generation failed (non-fatal):', pdfErr);
+    }
+
     return {
       ok: true,
       data: {
-        dteId: data.auto?.codigo?.toString() || data.auto?.id?.toString() || '',
-        dteNumber: data.auto?.numeroDte || '',
-        controlNumber: data.auto?.numeroControl || '',
-        generationCode: data.auto?.codigoGeneracion || '',
-        pdfUrl: data.auto?.pdfUrl || null,
-        rawResponse: data,
+        dteId,
+        dteNumber: controlNumber,
+        controlNumber,
+        generationCode: invoiceUUID,
+        pdfUrl,
+        rawResponse: saleData,
       },
     };
   } catch (err) {
@@ -318,27 +474,17 @@ export async function createDTE(
 // ── 4. PDF retrieval ─────────────────────────────────────────────────
 
 /**
- * Retrieve the PDF for a DTE from Acatha.
- *
- * TODO: Confirm the exact endpoint for PDF download.
- * May be something like /ventas/pdf?codigo={dteId} or similar.
+ * Download the PDF for a DTE from Acatha.
+ * Endpoint: GET /ventas/obtenerRide?codigo={dteId}
  */
 export async function getDTEPdf(
   session: AcathaSession,
   dteId: string,
 ): Promise<Result<{ pdfBytes: Uint8Array; contentType: string }>> {
   try {
-    const headers = {
-      ...authHeaders(),
-      'x-csrf-token': session.token,
-      'authorization': session.companyToken,
-      'Session-ID': session.sessionId,
-      'Cookie': `PHPSESSID=${session.sessionId}`,
-    };
+    const headers = sessionHeaders(session);
 
-    // TODO: Replace with actual PDF endpoint
-    const res = await fetch(acathaUrl(`/ventas/pdf?codigo=${dteId}`), {
-      method: 'GET',
+    const res = await fetch(acathaUrl(`/ventas/obtenerRide?codigo=${dteId}`), {
       headers,
     });
 
