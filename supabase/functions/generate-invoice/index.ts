@@ -109,9 +109,10 @@ Deno.serve(async (req) => {
     }
 
     const amountDollars = session.amount_cents / 100;
+    // Consumidor Final: IVA is INCLUDED in the price (formula: amount * 13 / 113)
     const ivaRate = 13;
-    const ivaAmount = Math.round(amountDollars * ivaRate) / 100;
-    const totalWithIva = Math.round((amountDollars + ivaAmount) * 100) / 100;
+    const ivaAmount = Math.round(amountDollars * 13 / 113 * 100) / 100;
+    const totalPagar = amountDollars; // Price already includes IVA
 
     // ── Step 1: Create DTE in Acatha ──
     let dteNumber = '';
@@ -168,7 +169,7 @@ Deno.serve(async (req) => {
       subtotal: amountDollars,
       ivaRate,
       ivaAmount,
-      total: totalWithIva,
+      total: totalPagar,
       currency: session.currency || 'USD',
       companyName: 'Pinklights',
       companyRuc: '',

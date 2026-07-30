@@ -277,9 +277,10 @@ export async function createDTE(
     const timeStr = now.toTimeString().split(' ')[0];
     const dateFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
 
-    const ivaRate = 0.13;
-    const ivaAmount = Math.round(request.totalAmount * ivaRate * 100) / 100;
-    const totalWithIva = Math.round((request.totalAmount + ivaAmount) * 100) / 100;
+    // Consumidor Final: IVA is INCLUDED in the price
+    // Formula: ivaItem = ventaGravada * 13 / 113
+    const ivaAmount = Math.round(request.totalAmount * 13 / 113 * 100) / 100;
+    const totalPagar = request.totalAmount; // Price already includes IVA
 
     const consumer = getGenericConsumer();
 
@@ -325,13 +326,13 @@ export async function createDTE(
       },
       totales: {
         total_sin_impuestos: request.totalAmount,
-        importe_total: totalWithIva,
+        importe_total: totalPagar,
         propina: 0, descuento: 0, descuento_adicional: 0,
         impuestos: [{ codigo: 2, codigo_porcentaje: '3', descuento_adicional: 0, base_imponible: request.totalAmount, valor: ivaAmount }],
         retenerRenta: 0, retenerIva: 0,
         subtotal: request.totalAmount, subtotal12: request.totalAmount,
         subtotal0: 0, noSujeto: 0, subtotal5: 0, totalExenta: 0,
-        totalGravada: totalWithIva,
+        totalGravada: totalPagar,
       },
       observaciones: request.items[0]?.description || 'Pinklights Purchase',
       moneda: 'USD',
@@ -346,10 +347,10 @@ export async function createDTE(
         descripcion: item.description,
         descuento_porcentaje: 0, descuento_valor: 0,
         detalles_adicionales: {},
-        impuestos: [{ codigo: 2, tarifa: '13', codigo_porcentaje: 3, base_imponible: item.totalPrice, valor: Math.round(item.totalPrice * ivaRate * 100) / 100 }],
+        impuestos: [{ codigo: 2, tarifa: '13', codigo_porcentaje: 3, base_imponible: item.totalPrice, valor: Math.round(item.totalPrice * 13 / 113 * 100) / 100 }],
       })),
       cuotas: [], tiposPagos: [], clienteNombreAlterno: '',
-      pagos: [{ total: totalWithIva, medio: 'EFECTIVO', id_medio: '6' }],
+      pagos: [{ total: totalPagar, medio: 'EFECTIVO', id_medio: '6' }],
       vendedor: { codigo: null }, sucursal: null,
     };
 
@@ -403,17 +404,17 @@ export async function createDTE(
           precioUni: item.unitPrice, montoDescu: 0,
           ventaNoSuj: 0, ventaExenta: 0, ventaGravada: item.totalPrice,
           tributos: null, psv: 0, noGravado: 0,
-          ivaItem: Math.round(item.totalPrice * ivaRate * 100) / 100,
+          ivaItem: Math.round(item.totalPrice * 13 / 113 * 100) / 100,
         })),
         resumen: {
           totalNoSuj: 0, totalExenta: 0, totalGravada: request.totalAmount,
           subTotalVentas: request.totalAmount, descuNoSuj: 0, descuExenta: 0,
           descuGravada: 0, porcentajeDescuento: 0, totalDescu: 0, tributos: null,
           subTotal: request.totalAmount, ivaRete1: 0, reteRenta: 0,
-          montoTotalOperacion: totalWithIva, totalNoGravado: 0,
-          totalPagar: totalWithIva, totalLetras: '', totalIva: ivaAmount,
+          montoTotalOperacion: totalPagar, totalNoGravado: 0,
+          totalPagar: totalPagar, totalLetras: '', totalIva: ivaAmount,
           saldoFavor: 0, condicionOperacion: 1,
-          pagos: [{ codigo: '01', montoPago: totalWithIva, referencia: '', plazo: null, periodo: null }],
+          pagos: [{ codigo: '01', montoPago: totalPagar, referencia: '', plazo: null, periodo: null }],
           numPagoElectronico: null,
         },
         extension: null, apendice: null,
@@ -478,7 +479,7 @@ export async function createDTE(
               Totals: {
                 TotSales: request.totalAmount, Subtotal: request.totalAmount,
                 IvaDetained: 0, RetenctionRent: 0,
-                MountTotalOperation: totalWithIva, TotalPay: totalWithIva,
+                MountTotalOperation: totalPagar, TotalPay: totalPagar,
                 IvaPorcentaje: [{ Porcentaje: 13, Valor: ivaAmount }],
               },
               ValueInLetters: '',
