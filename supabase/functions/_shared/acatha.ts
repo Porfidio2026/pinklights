@@ -220,63 +220,15 @@ export async function acathaLogin(
 // ── 2. Client management ────────────────────────────────────────────
 
 /**
- * Create or look up a client (receptor) in Acatha.
- * Endpoint: POST /clientes/clientes/ingresar (codigo: 0 for new)
- * Search:   GET  /clientes/clientes/listar
+ * For Consumidor Final (tipo 01), we use "CLIENTES VARIOS" (generic consumer).
+ * No client creation needed. The comprador block uses tipo_identificacion: "12".
  */
-export async function getOrCreateClient(
-  session: AcathaSession,
-  customerName: string,
-  customerEmail: string,
-): Promise<Result<{ clientId: string }>> {
-  try {
-    const headers = sessionHeaders(session);
-
-    // Search for existing client by email
-    const searchRes = await fetch(
-      acathaUrl(`/clientes/clientes/listar?identificacion=&nombre=${encodeURIComponent(customerEmail)}&isPaged=true&page=1&limit=5`),
-      { headers },
-    );
-    const searchData = await searchRes.json();
-
-    if (!searchData.error && searchData.auto) {
-      const clients = Array.isArray(searchData.auto) ? searchData.auto : [];
-      const existing = clients.find((c: any) => c.email === customerEmail);
-      if (existing) {
-        console.log(`[Acatha] Found existing client: ${existing.codigo}`);
-        return { ok: true, data: { clientId: existing.codigo.toString() } };
-      }
-    }
-
-    // Create new client (codigo: 0 = new)
-    const createRes = await fetch(acathaUrl('/clientes/clientes/ingresar'), {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        infoRegistro: {
-          codigo: 0,
-          nombre: customerName,
-          comercial: customerName,
-          email: customerEmail,
-          identificacion: '',
-          tipoIdentificacion: '',
-          direccion: '',
-          telefono: '',
-        },
-      }),
-    });
-    const createData = await createRes.json();
-
-    if (createData.error) {
-      return { ok: false, error: `Client creation failed: ${createData.message || JSON.stringify(createData)}` };
-    }
-
-    const clientId = createData.auto?.codigo?.toString() || createData.auto?.toString() || '';
-    console.log(`[Acatha] Created client: ${clientId}`);
-    return { ok: true, data: { clientId } };
-  } catch (err) {
-    return { ok: false, error: `Client error: ${err instanceof Error ? err.message : String(err)}` };
-  }
+export function getGenericConsumer(): { tipo_identificacion: string; identificacion: string; nombres: string } {
+  return {
+    tipo_identificacion: '12',
+    identificacion: '9999999999999',
+    nombres: 'CLIENTES VARIOS',
+  };
 }
 
 // ── 3. DTE (Invoice) creation ────────────────────────────────────────
@@ -297,14 +249,14 @@ interface DTERequest {
 }
 
 /**
- * Create a DTE (Consumidor Final invoice) in Acatha and send to Hacienda.
+ * Create a DTE (Consumidor Final invoice) in Acatha, submit to Hacienda, generate PDF.
  *
- * Steps:
- *   1. Get sequential number (autorizacion/extraer)
- *   2. Create sale (ventas/sv/ingresar)
- *   3. Send to Hacienda (facturacion-electronica/consumidor-final)
- *   4. Register auth (ventas/registerAuth)
- *   5. Generate PDF (generales/pdfGenerate)
+ * Confirmed flow:
+ *   1. Create sale via ventas/sv/ingresar (Acatha-format JSON)
+ *   2. Submit to Hacienda via facturacion-electronica/consumidor-final (MH-format dteJson)
+ *   3. Register Hacienda response via ventas/registerAuth
+ *   4. Generate PDF via generales/pdfGenerate (reportSV format)
+ *   5. Get PDF URL via ventas/impresion
  */
 export async function createDTE(
   session: AcathaSession,
@@ -319,73 +271,91 @@ export async function createDTE(
 }>> {
   try {
     const headers = sessionHeaders(session);
-    const invoiceUUID = crypto.randomUUID();
+    const generationCode = crypto.randomUUID().toUpperCase();
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().split(' ')[0];
+    const dateFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
 
-    // Step 1: Get sequential authorization
-    const seqRes = await fetch(
-      acathaUrl(`/autorizacion/extraer?equipo=${encodeURIComponent(env('ACATHA_USER'))}`),
-      { headers },
-    );
-    const seqData = await seqRes.json();
+    const ivaRate = 0.13;
+    const ivaAmount = Math.round(request.totalAmount * ivaRate * 100) / 100;
+    const totalWithIva = Math.round((request.totalAmount + ivaAmount) * 100) / 100;
 
-    if (seqData.error) {
-      return { ok: false, error: `Sequential number failed: ${seqData.message || 'unknown'}` };
-    }
+    const consumer = getGenericConsumer();
 
-    const seq = seqData.auto || {};
-    const ptoEmision = seq.ptoemision || 'M001';
-    const establecimiento = seq.establecimiento || 'P001';
-    const numActual = seq.numActual || 1;
-    const secuencial = String(numActual).padStart(15, '0');
-    const controlNumber = `DTE-01-${ptoEmision}${establecimiento}-${secuencial}`;
+    // Use a test item code that exists in Acatha inventory
+    const itemCode = env('ACATHA_ITEM_CODE') || '000006';
 
-    // Step 2: Create sale
+    // ── Step 1: Create sale in Acatha ──
     const saleBody = {
-      identificador: invoiceUUID,
-      tipodoc: '01', // Consumidor Final
-      tipo_emision: 1, // Electronic
-      local: session.localCode,
-      ambiente: '00', // 00 = test, 01 = production
+      identificador: generationCode,
+      tipodoc: '01',
+      tipo_emision: '1',
+      local: {
+        codigo: parseInt(session.localCode),
+        nombre: 'Principal',
+        clase: '0', descuento: 100, estado: 1,
+      },
+      pventa: env('ACATHA_USER'),
+      fecha_emision: dateFormatted,
       emisor: {
-        nit: session.companyRuc,
-        nrc: session.companyNrc,
-        nombre: session.companyName,
+        ruc: session.companyRuc,
+        razon_social: session.companyName,
+        nombre_comercial: session.companyName,
+        contribuyente_especial: '',
+        direccion: '',
+        obligado_contabilidad: true,
+        establecimiento: {
+          punto_emision: '001',
+          codigo: session.localCode,
+          direccion: '',
+        },
       },
       comprador: {
-        nombre: request.customerName,
-        correo: request.customerEmail,
+        tipo_identificacion: consumer.tipo_identificacion,
+        identificacion: consumer.identificacion,
+        nombres: consumer.nombres,
+        razon_social: '', direccion: 'N/A',
+        email: request.customerEmail || '', telefono: 'S/T', ciudad: '',
       },
-      items: request.items.map((item, i) => ({
-        numItem: i + 1,
-        tipoItem: 2, // Service
-        descripcion: item.description,
-        cantidad: item.quantity,
-        precioUni: item.unitPrice,
-        ventaGravada: item.totalPrice,
-        codigo: '',
-        uniMedida: 99, // Other
-      })),
+      informacion_adicional: {
+        Cliente: request.customerName,
+        Enviado_a: request.customerEmail || '',
+        Direccion: 'N/A', Telefono: 'S/T',
+      },
       totales: {
-        totalGravada: request.totalAmount,
-        subTotalVentas: request.totalAmount,
-        montoTotalOperacion: request.totalAmount,
-        totalPagar: request.totalAmount,
+        total_sin_impuestos: request.totalAmount,
+        importe_total: totalWithIva,
+        propina: 0, descuento: 0, descuento_adicional: 0,
+        impuestos: [{ codigo: 2, codigo_porcentaje: '3', descuento_adicional: 0, base_imponible: request.totalAmount, valor: ivaAmount }],
+        retenerRenta: 0, retenerIva: 0,
+        subtotal: request.totalAmount, subtotal12: request.totalAmount,
+        subtotal0: 0, noSujeto: 0, subtotal5: 0, totalExenta: 0,
+        totalGravada: totalWithIva,
       },
-      formaPago: [{
-        codigo: '01', // Cash/electronic
-        montoPago: request.totalAmount,
-      }],
-      numeroControl: controlNumber,
-      codigoGeneracion: invoiceUUID,
+      observaciones: request.items[0]?.description || 'Pinklights Purchase',
+      moneda: 'USD',
+      formaPago: { value: 6, label: 'EFECTIVO' },
+      ambiente: '1',
+      items: request.items.map((item, i) => ({
+        codigo_auxiliar: itemCode,
+        codigo_principal: itemCode,
+        precio_unitario: item.unitPrice,
+        cantidad: item.quantity,
+        precio_total_sin_impuestos: item.totalPrice,
+        descripcion: item.description,
+        descuento_porcentaje: 0, descuento_valor: 0,
+        detalles_adicionales: {},
+        impuestos: [{ codigo: 2, tarifa: '13', codigo_porcentaje: 3, base_imponible: item.totalPrice, valor: Math.round(item.totalPrice * ivaRate * 100) / 100 }],
+      })),
+      cuotas: [], tiposPagos: [], clienteNombreAlterno: '',
+      pagos: [{ total: totalWithIva, medio: 'EFECTIVO', id_medio: '6' }],
+      vendedor: { codigo: null }, sucursal: null,
     };
 
+    console.log('[Acatha] Creating sale...');
     const saleRes = await fetch(acathaUrl('/ventas/sv/ingresar'), {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(saleBody),
+      method: 'POST', headers, body: JSON.stringify(saleBody),
     });
     const saleData = await saleRes.json();
 
@@ -393,64 +363,145 @@ export async function createDTE(
       return { ok: false, error: `Sale creation failed: ${saleData.message || JSON.stringify(saleData)}` };
     }
 
-    const dteId = saleData.auto?.codigo?.toString() || saleData.auto?.id?.toString() || invoiceUUID;
+    const comprobante = saleData.auto?.comprobante?.toString() || '';
+    const autorizacion = saleData.auto?.autorizacion || '';
+    const ptoEmision = saleData.auto?.puntoEmision || '001';
+    const establecimiento = saleData.auto?.establecimiento || '001';
+    const numero = saleData.auto?.numero || '000000000000001';
+    const controlNumber = `DTE-01-M${establecimiento.padStart(3, '0')}P${ptoEmision.padStart(3, '0')}-${numero}`;
 
-    // Step 3: Send to Hacienda (test environment)
+    console.log(`[Acatha] Sale created: comprobante=${comprobante}, control=${controlNumber}`);
+
+    // ── Step 2: Submit to Hacienda ──
     let selloRecibido = '';
+    const codActividad = env('ACATHA_COD_ACTIVIDAD') || '62010';
     try {
+      const dteJson = {
+        identificacion: {
+          version: 1, ambiente: '00', tipoDte: '01',
+          numeroControl: controlNumber, codigoGeneracion: generationCode,
+          tipoModelo: 1, tipoOperacion: 1,
+          tipoContingencia: null, motivoContin: null,
+          fecEmi: dateStr, horEmi: timeStr, tipoMoneda: 'USD',
+        },
+        documentoRelacionado: null,
+        emisor: {
+          nit: session.companyRuc, nrc: session.companyNrc,
+          nombre: session.companyName, codActividad,
+          descActividad: 'Servicios', nombreComercial: session.companyName,
+          tipoEstablecimiento: '01',
+          direccion: { departamento: '07', municipio: '01', complemento: 'SONSONATE' },
+          telefono: '', correo: env('ACATHA_USER'),
+          codEstableMH: null, codEstable: null, codPuntoVentaMH: null, codPuntoVenta: null,
+        },
+        receptor: null,
+        otrosDocumentos: null, ventaTercero: null,
+        cuerpoDocumento: request.items.map((item, i) => ({
+          numItem: i + 1, tipoItem: 2, numeroDocumento: null,
+          codigo: itemCode, codTributo: null,
+          descripcion: item.description, cantidad: item.quantity, uniMedida: 99,
+          precioUni: item.unitPrice, montoDescu: 0,
+          ventaNoSuj: 0, ventaExenta: 0, ventaGravada: item.totalPrice,
+          tributos: null, psv: 0, noGravado: 0,
+          ivaItem: Math.round(item.totalPrice * ivaRate * 100) / 100,
+        })),
+        resumen: {
+          totalNoSuj: 0, totalExenta: 0, totalGravada: request.totalAmount,
+          subTotalVentas: request.totalAmount, descuNoSuj: 0, descuExenta: 0,
+          descuGravada: 0, porcentajeDescuento: 0, totalDescu: 0, tributos: null,
+          subTotal: request.totalAmount, ivaRete1: 0, reteRenta: 0,
+          montoTotalOperacion: totalWithIva, totalNoGravado: 0,
+          totalPagar: totalWithIva, totalLetras: '', totalIva: ivaAmount,
+          saldoFavor: 0, condicionOperacion: 1,
+          pagos: [{ codigo: '01', montoPago: totalWithIva, referencia: '', plazo: null, periodo: null }],
+          numPagoElectronico: null,
+        },
+        extension: null, apendice: null,
+      };
+
       const haciendaRes = await fetch(haciendaUrl('facturacion-electronica/consumidor-final'), {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(saleBody),
+        method: 'POST', headers,
+        body: JSON.stringify({
+          cliente: { ref: env('ACATHA_COMPANY_UUID') || '' },
+          idEnvio: 1,
+          consumidorFinal: { nit: session.companyRuc, activo: true, dteJson },
+        }),
       });
       const haciendaData = await haciendaRes.json();
-      selloRecibido = haciendaData.selloRecibido || '';
-      console.log(`[Acatha] Hacienda response: sello=${selloRecibido ? 'yes' : 'no'}`);
+      const msg = haciendaData.body?.message || haciendaData;
+      selloRecibido = msg.selloRecibido || haciendaData.selloRecibido || '';
+      console.log(`[Acatha] Hacienda: estado=${msg.estado || '?'}, sello=${selloRecibido ? 'yes' : 'no'}`);
     } catch (hErr) {
-      console.error('[Acatha] Hacienda submission failed (non-fatal):', hErr);
+      console.error('[Acatha] Hacienda failed (non-fatal):', hErr);
     }
 
-    // Step 4: Register authorization if we got a sello
+    // ── Step 3: Register Hacienda authorization ──
     if (selloRecibido) {
       try {
         await fetch(acathaUrl('/ventas/registerAuth'), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            codigo: dteId,
-            selloRecibido,
-            codigoGeneracion: invoiceUUID,
-          }),
+          method: 'POST', headers,
+          body: JSON.stringify({ identificador: generationCode, selloRecibido, fhProcesamiento: new Date().toISOString() }),
         });
       } catch (raErr) {
         console.error('[Acatha] registerAuth failed (non-fatal):', raErr);
       }
     }
 
-    // Step 5: Generate PDF
+    // ── Step 4: Generate PDF (works even without Hacienda stamp) ──
     let pdfUrl: string | null = null;
     try {
+      const pdfBody = {
+        identificador: generationCode,
+        reportSV: {
+          jsonHacienda: {
+            idEnvio: 1,
+            consumidorFinal: { nit: session.companyRuc, activo: true, dteJson: {} },
+          },
+          pdfHacienda: {
+            local: { codigo: parseInt(session.localCode), nombre: 'Principal', direccion: '', telefono: '' },
+            template: 'SVRideFactura',
+            reportData: [{
+              CodeGenerated: generationCode,
+              ControlNumber: controlNumber,
+              ReceiptStamp: selloRecibido || 'PENDING',
+              TransactionType: 'FACTURA',
+              Receiver: { Nit: '', EconomicActivity: '', Direction: 'N/A', Phone: 'S/T', Email: request.customerEmail || '', ComertialName: consumer.nombres, StablishmentType: '' },
+              Transmitter: { Nit: session.companyRuc, Nrc: session.companyNrc, EconomicActivity: 'Servicios', Direction: '', Phone: '', Email: env('ACATHA_USER'), ComertialName: session.companyName, StablishmentType: '01', BusinessName: session.companyName },
+              Establishment: establecimiento,
+              EmissionPoint: ptoEmision,
+              InvoiceDate: dateStr,
+              Details: request.items.map((item, i) => ({
+                Code: itemCode, Number: i + 1, Cant: item.quantity, Unite: 99,
+                Name: item.description, UnitPrice: item.unitPrice,
+                DiscountIte: 0, SaleUnSujet: 0, SaleExcent: 0, SaleSaved: item.totalPrice,
+              })),
+              Totals: {
+                TotSales: request.totalAmount, Subtotal: request.totalAmount,
+                IvaDetained: 0, RetenctionRent: 0,
+                MountTotalOperation: totalWithIva, TotalPay: totalWithIva,
+                IvaPorcentaje: [{ Porcentaje: 13, Valor: ivaAmount }],
+              },
+              ValueInLetters: '',
+              ConditionOperation: 'Contado',
+            }],
+            fileName: selloRecibido || generationCode,
+          },
+        },
+      };
+
       await fetch(acathaUrl('/generales/pdfGenerate'), {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          codigo: dteId,
-          template: 'SVRideFactura',
-        }),
+        method: 'POST', headers, body: JSON.stringify(pdfBody),
       });
 
-      // Get the PDF/JSON file URLs
-      const filesRes = await fetch(
-        acathaUrl(`/ventas/impresion?codigo=${dteId}`),
-        { headers },
-      );
+      // Get PDF URL
+      const filesRes = await fetch(acathaUrl(`/ventas/impresion?claveacceso=${generationCode}`), { headers });
       const filesData = await filesRes.json();
-      if (!filesData.error && filesData.auto) {
-        pdfUrl = filesData.auto.pdf || filesData.auto.urlPdf || null;
-        if (pdfUrl && !pdfUrl.startsWith('http')) {
-          pdfUrl = `${env('ACATHA_BASE_URL')}${pdfUrl}`;
-        }
+      if (filesData.auto?.url) {
+        pdfUrl = filesData.auto.url;
+      } else if (filesData.auto?.pdf) {
+        pdfUrl = `${env('ACATHA_BASE_URL')}${filesData.auto.pdf}`;
       }
+      console.log(`[Acatha] PDF URL: ${pdfUrl || 'none'}`);
     } catch (pdfErr) {
       console.error('[Acatha] PDF generation failed (non-fatal):', pdfErr);
     }
@@ -458,10 +509,10 @@ export async function createDTE(
     return {
       ok: true,
       data: {
-        dteId,
+        dteId: comprobante,
         dteNumber: controlNumber,
         controlNumber,
-        generationCode: invoiceUUID,
+        generationCode,
         pdfUrl,
         rawResponse: saleData,
       },
@@ -474,29 +525,31 @@ export async function createDTE(
 // ── 4. PDF retrieval ─────────────────────────────────────────────────
 
 /**
- * Download the PDF for a DTE from Acatha.
- * Endpoint: GET /ventas/obtenerRide?codigo={dteId}
+ * Get the PDF URL for a DTE from Acatha.
+ * Uses ventas/impresion to get the URL, then returns it.
  */
 export async function getDTEPdf(
   session: AcathaSession,
-  dteId: string,
-): Promise<Result<{ pdfBytes: Uint8Array; contentType: string }>> {
+  generationCode: string,
+): Promise<Result<{ pdfUrl: string }>> {
   try {
     const headers = sessionHeaders(session);
 
-    const res = await fetch(acathaUrl(`/ventas/obtenerRide?codigo=${dteId}`), {
-      headers,
-    });
+    const filesRes = await fetch(
+      acathaUrl(`/ventas/impresion?claveacceso=${generationCode}`),
+      { headers },
+    );
+    const filesData = await filesRes.json();
 
-    if (!res.ok) {
-      return { ok: false, error: `PDF download failed: HTTP ${res.status}` };
+    if (filesData.auto?.url) {
+      return { ok: true, data: { pdfUrl: filesData.auto.url } };
+    }
+    if (filesData.auto?.pdf) {
+      return { ok: true, data: { pdfUrl: `${env('ACATHA_BASE_URL')}${filesData.auto.pdf}` } };
     }
 
-    const contentType = res.headers.get('content-type') || 'application/pdf';
-    const pdfBytes = new Uint8Array(await res.arrayBuffer());
-
-    return { ok: true, data: { pdfBytes, contentType } };
+    return { ok: false, error: 'PDF URL not found' };
   } catch (err) {
-    return { ok: false, error: `PDF download error: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, error: `PDF retrieval error: ${err instanceof Error ? err.message : String(err)}` };
   }
 }

@@ -69,14 +69,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!invoice.acatha_dte_id) {
+    // If we already have a PDF URL stored, return it directly
+    if (invoice.pdf_url) {
       return new Response(
-        JSON.stringify({ error: 'Invoice has no DTE reference yet' }),
+        JSON.stringify({ pdfUrl: invoice.pdf_url }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (!invoice.generation_code) {
+      return new Response(
+        JSON.stringify({ error: 'Invoice has no generation code yet' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Login to Acatha and fetch PDF
+    // Login to Acatha and get PDF URL
     const loginResult = await acathaLogin(supabase);
     if (!loginResult.ok) {
       return new Response(
@@ -85,7 +93,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const pdfResult = await getDTEPdf(loginResult.data, invoice.acatha_dte_id);
+    const pdfResult = await getDTEPdf(loginResult.data, invoice.generation_code);
     if (!pdfResult.ok) {
       return new Response(
         JSON.stringify({ error: pdfResult.error }),
@@ -93,14 +101,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    return new Response(pdfResult.data.pdfBytes, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': pdfResult.data.contentType,
-        'Content-Disposition': `attachment; filename="invoice-${invoice.dte_number || invoice.id}.pdf"`,
-      },
-    });
+    // Cache the URL for future requests
+    await supabase
+      .from('invoices')
+      .update({ pdf_url: pdfResult.data.pdfUrl, updated_at: new Date().toISOString() })
+      .eq('id', invoice_id);
+
+    return new Response(
+      JSON.stringify({ pdfUrl: pdfResult.data.pdfUrl }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   } catch (error) {
     console.error('Error in get-invoice-pdf:', error);
     return new Response(

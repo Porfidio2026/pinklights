@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
-import { acathaLogin, getOrCreateClient, createDTE } from '../_shared/acatha.ts'
+import { acathaLogin, createDTE } from '../_shared/acatha.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -123,24 +123,10 @@ Deno.serve(async (req) => {
 
     const acathaSession = loginResult.data;
 
-    // Create/lookup client in Acatha
-    const clientResult = await getOrCreateClient(acathaSession, customerName, userEmail);
-    if (!clientResult.ok) {
-      console.error('Acatha client creation failed:', clientResult.error);
-      await supabase
-        .from('invoices')
-        .update({ status: 'failed', error_message: clientResult.error, updated_at: new Date().toISOString() })
-        .eq('id', invoiceId);
-      return new Response(
-        JSON.stringify({ error: clientResult.error }),
-        { status: 502, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // Create DTE
+    // Create DTE (uses generic "CLIENTES VARIOS" consumer)
     const amountDollars = session.amount_cents / 100;
     const dteResult = await createDTE(acathaSession, {
-      clientId: clientResult.data.clientId,
+      clientId: '',
       customerName,
       customerEmail: userEmail,
       items: [
