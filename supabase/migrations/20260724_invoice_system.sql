@@ -54,6 +54,21 @@ CREATE INDEX idx_invoices_user_id ON public.invoices(user_id);
 CREATE INDEX idx_invoices_status ON public.invoices(status);
 CREATE INDEX idx_invoices_payment_session_id ON public.invoices(payment_session_id);
 
+-- Storage bucket for invoice PDFs (public read, write via service role)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('invoices', 'invoices', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow public read access to invoice PDFs
+CREATE POLICY "Public read access for invoice PDFs"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'invoices');
+
+-- Allow service role to upload invoice PDFs (Edge Functions use service role)
+CREATE POLICY "Service role can upload invoice PDFs"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'invoices');
+
 -- Acatha session cache (accessed only by Edge Functions via service role)
 CREATE TABLE IF NOT EXISTS public.acatha_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

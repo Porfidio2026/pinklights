@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
-import { supabase } from '@/lib/supabase';
 import {
   FileText,
   Download,
@@ -41,50 +40,42 @@ const MyInvoices = () => {
   const { toast } = useToast();
   const { invoices, isLoading } = useInvoices();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const _ = null; // downloadingId removed, PDF opens directly
 
-  const handleDownloadPdf = async (invoice: Invoice) => {
-    if (!invoice.acatha_dte_id) {
+  const handleDownloadPdf = (invoice: Invoice) => {
+    if (!invoice.pdf_url) {
       toast({ title: 'PDF not available yet', description: 'Invoice is still being generated', variant: 'destructive' });
       return;
     }
-
-    setDownloadingId(invoice.id);
-    try {
-      const { data, error } = await supabase.functions.invoke('get-invoice-pdf', {
-        body: { invoice_id: invoice.id },
-      });
-
-      if (error) throw error;
-
-      // Create blob and download
-      const blob = new Blob([data], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `invoice-${invoice.dte_number || invoice.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      toast({
-        title: 'Download failed',
-        description: err.message || 'Could not download invoice PDF',
-        variant: 'destructive',
-      });
-    } finally {
-      setDownloadingId(null);
-    }
+    window.open(invoice.pdf_url, '_blank', 'noopener,noreferrer');
   };
 
   const handleShareWhatsApp = (invoice: Invoice) => {
-    const text = `Invoice ${invoice.dte_number || invoice.id}\n${invoice.description || 'Pinklights'}\nAmount: ${formatAmount(invoice.amount_cents, invoice.currency)}\nDate: ${new Date(invoice.created_at).toLocaleDateString()}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    const lines = [
+      `Invoice: ${invoice.dte_number || invoice.id}`,
+      invoice.description || 'Pinklights',
+      `Amount: ${formatAmount(invoice.amount_cents, invoice.currency)}`,
+      `Date: ${new Date(invoice.created_at).toLocaleDateString()}`,
+    ];
+    if (invoice.pdf_url) {
+      lines.push(`Download PDF: ${invoice.pdf_url}`);
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleShareEmail = (invoice: Invoice) => {
     const subject = `Invoice ${invoice.dte_number || invoice.id} - Pinklights`;
-    const body = `Invoice Details:\n\n${invoice.description || 'Pinklights'}\nAmount: ${formatAmount(invoice.amount_cents, invoice.currency)}\nDate: ${new Date(invoice.created_at).toLocaleDateString()}\nStatus: ${invoice.status}${invoice.dte_number ? `\nDTE Number: ${invoice.dte_number}` : ''}`;
-    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    const lines = [
+      'Invoice Details:',
+      '',
+      invoice.description || 'Pinklights',
+      `Amount: ${formatAmount(invoice.amount_cents, invoice.currency)}`,
+      `Date: ${new Date(invoice.created_at).toLocaleDateString()}`,
+      `Status: ${invoice.status}`,
+    ];
+    if (invoice.dte_number) lines.push(`DTE Number: ${invoice.dte_number}`);
+    if (invoice.pdf_url) lines.push(`\nDownload PDF: ${invoice.pdf_url}`);
+    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`);
   };
 
   return (
@@ -186,18 +177,13 @@ const MyInvoices = () => {
                       </div>
 
                       <div className="flex gap-2 pt-2">
-                        {invoice.status === 'completed' && (
+                        {invoice.pdf_url && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleDownloadPdf(invoice)}
-                            disabled={downloadingId === invoice.id}
                           >
-                            {downloadingId === invoice.id ? (
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4 mr-1" />
-                            )}
+                            <Download className="h-4 w-4 mr-1" />
                             PDF
                           </Button>
                         )}

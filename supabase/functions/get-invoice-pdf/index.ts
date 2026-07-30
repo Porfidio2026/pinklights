@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
 import { corsHeaders } from '../_shared/cors.ts'
-import { acathaLogin, getDTEPdf } from '../_shared/acatha.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -21,8 +20,8 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       return new Response(
@@ -41,10 +40,9 @@ Deno.serve(async (req) => {
     }
 
     // Look up invoice and verify ownership
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('*')
+      .select('id, user_id, pdf_url, dte_number')
       .eq('id', invoice_id)
       .single();
 
@@ -69,46 +67,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If we already have a PDF URL stored, return it directly
-    if (invoice.pdf_url) {
+    if (!invoice.pdf_url) {
       return new Response(
-        JSON.stringify({ pdfUrl: invoice.pdf_url }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    if (!invoice.generation_code) {
-      return new Response(
-        JSON.stringify({ error: 'Invoice has no generation code yet' }),
+        JSON.stringify({ error: 'PDF not available yet' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Login to Acatha and get PDF URL
-    const loginResult = await acathaLogin(supabase);
-    if (!loginResult.ok) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to authenticate with invoicing service' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    const pdfResult = await getDTEPdf(loginResult.data, invoice.generation_code);
-    if (!pdfResult.ok) {
-      return new Response(
-        JSON.stringify({ error: pdfResult.error }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // Cache the URL for future requests
-    await supabase
-      .from('invoices')
-      .update({ pdf_url: pdfResult.data.pdfUrl, updated_at: new Date().toISOString() })
-      .eq('id', invoice_id);
-
+    // Return the PDF URL (stored in Supabase Storage)
     return new Response(
-      JSON.stringify({ pdfUrl: pdfResult.data.pdfUrl }),
+      JSON.stringify({ pdfUrl: invoice.pdf_url }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error) {
