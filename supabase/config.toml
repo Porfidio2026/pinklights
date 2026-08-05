@@ -1,2 +1,28 @@
 # Set via: supabase link --project-ref <your-project-ref>
 project_id = "uptvbtjryzivhybegvfa"
+
+# JWT verification is pinned per function so a redeploy cannot silently change
+# it. The CLI defaults to verify_jwt = true; the webhook endpoints below must
+# stay false because their callers are external services that cannot present a
+# Supabase JWT.
+
+[functions.payment-callback]
+verify_jwt = false # DitoBanx payment webhook
+
+[functions.create-payment]
+verify_jwt = false
+
+[functions.calculate-drive-time]
+verify_jwt = false
+
+[functions.generate-about-me]
+verify_jwt = false
+
+[functions.generate-magic-link]
+verify_jwt = true
+
+[functions.generate-invoice]
+verify_jwt = true # called by payment-callback with the service role key
+
+[functions.get-invoice-pdf]
+verify_jwt = true # called from the browser with the user's session token
