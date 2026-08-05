@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchForm } from '@/components/SearchForm';
 import { RelatedProfiles } from '@/components/RelatedProfiles';
@@ -28,17 +28,25 @@ const MainSearch: React.FC<MainSearchProps> = ({
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Handle case when no service or gender is selected
-  if (!selectedService || !selectedGender) {
-    useEffect(() => {
-      toast({
-        title: "Selection Required",
-        description: "Please select service and gender preferences first.",
-        variant: "destructive",
-      });
-      setStep(1);
-    }, []);
+  // Handle case when no service or gender is selected. The effect has to run
+  // unconditionally: calling it inside the early-return branch changes the hook
+  // count between renders, which makes React tear the component down.
+  const isMissingSelection = !selectedService || !selectedGender;
+  const hasWarned = useRef(false);
 
+  useEffect(() => {
+    if (!isMissingSelection || hasWarned.current) return;
+    hasWarned.current = true;
+
+    toast({
+      title: "Selection Required",
+      description: "Please select service and gender preferences first.",
+      variant: "destructive",
+    });
+    setStep(1);
+  }, [isMissingSelection, toast, setStep]);
+
+  if (isMissingSelection) {
     return null;
   }
 
