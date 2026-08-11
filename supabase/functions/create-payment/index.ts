@@ -16,6 +16,29 @@ const PACKAGES: Record<string, { days: number; amount: string; description: stri
   '30day': { days: 30, amount: '75.00', description: 'Pinklights - 30 Days Visibility' },
 };
 
+/**
+ * DitoBanx rejects customer.name unless it is at least two whitespace-separated
+ * words of two or more ASCII letters each: no digits, no accents, no initials.
+ * Empirically "Karol", "A B", "tester02" and "Maria Jose Perez" with accents are
+ * all refused, so names are transliterated and validated before sending.
+ */
+function sanitizeCustomerName(...candidates: (string | null | undefined)[]): string {
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const cleaned = candidate
+      .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents
+      .replace(/[^A-Za-z\s'-]/g, ' ')                   // drop digits and symbols
+      .split(/\s+/)
+      .filter((w) => w.replace(/[^A-Za-z]/g, '').length >= 2)
+      .join(' ')
+      .trim();
+    if (cleaned.split(' ').length >= 2) return cleaned;
+  }
+  // Better a valid generic name than a rejected checkout. The cardholder name is
+  // captured by DitoBanx on their own payment page.
+  return 'Pinklights Customer';
+}
+
 function generateOrderNumber(): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -77,6 +100,21 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Prefer the profile's real name; user_metadata.full_name is unset on every
+    // account today, so the old email-prefix fallback was what DitoBanx rejected.
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: profileRow } = await supabaseAdmin
+      .from('profiles')
+      .select('full_name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const customerName = sanitizeCustomerName(
+      profileRow?.full_name,
+      user.user_metadata?.full_name,
+      user.email?.split('@')[0],
+    );
+
     const orderNumber = generateOrderNumber();
     const currency = 'USD';
 
@@ -106,7 +144,7 @@ Deno.serve(async (req) => {
         success_url: `${SITE_URL}/payment-success?order=${orderNumber}`,
         cancel_url: `${SITE_URL}/buy-credits`,
         customer: {
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Customer',
+          name: customerName,
           email: user.email || '',
         },
         hash: hash,
