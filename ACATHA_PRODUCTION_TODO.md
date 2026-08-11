@@ -27,8 +27,15 @@ Everything below is what still stands between that and real emission.
       item `barras 0001` ("SERVICIO SITES SV10"). Need a real Pinklights item, and
       the correct `linea` / `grupo` / `unidadv` / `tipo` values for it.
       Creation endpoint: `POST inventario/items/save`.
+- [ ] **Forma de pago is declared as cash but isn't.** We send
+      `resumen.pagos[0].codigo: "01"` (billetes y monedas) and
+      `formaPago: { value: 6, label: 'EFECTIVO' }`, while collection actually runs
+      through DitoBanx. Ask which catalog code applies (`02` débito, `03` crédito,
+      `05` transferencia) and whether `numPagoElectronico` must be populated.
+      Hacienda accepts it today, but it is incorrect tax data.
 - [ ] **Do we need CCF (`tipoDte 03`)** for business customers who want IVA credit,
       or is Consumidor Final (`01`) sufficient?
+- [ ] **Refunds** — Nota de Crédito (`05`) or the DTE invalidation process?
 - [ ] Confirm the **Acatha-internal sale `ambiente`** value for production. The MH
       `ambiente` is `00` → `01`, but the sale payload carries a separate `ambiente`
       currently `'1'` using a different code set (`ACATHA_AMBIENTE_VENTA`).
