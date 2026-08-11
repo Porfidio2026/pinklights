@@ -86,6 +86,36 @@ function startServer() {
   });
 }
 
+/**
+ * Puppeteer's own Chrome download will not start in CI: the build image lacks
+ * Chrome's shared libraries (`libnspr4.so: cannot open shared object file`) and
+ * installing them needs root, which the build user does not have. On Linux,
+ * prefer @sparticuz/chromium, which ships a Chromium with those libraries
+ * bundled. Locally, plain puppeteer is simpler and already works.
+ */
+async function launchBrowser() {
+  if (process.platform === 'linux') {
+    try {
+      const { default: chromium } = await import('@sparticuz/chromium');
+      const { default: puppeteerCore } = await import('puppeteer-core');
+      const executablePath = await chromium.executablePath();
+      console.log(`Using @sparticuz/chromium at ${executablePath}`);
+      return await puppeteerCore.launch({
+        args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath,
+        headless: true,
+      });
+    } catch (err) {
+      console.warn(`@sparticuz/chromium unavailable (${err.message}), falling back to puppeteer`);
+    }
+  }
+
+  return await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+}
+
 async function prerender() {
   console.log('Starting prerender...');
 
@@ -97,10 +127,7 @@ async function prerender() {
   // missing browser must degrade to shipping the plain SPA, never fail the build.
   let browser;
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    browser = await launchBrowser();
   } catch (err) {
     console.warn(`\nSkipping prerender, could not launch Chrome: ${err.message}`);
     console.warn('The SPA build in dist/ is intact and deployable.\n');
