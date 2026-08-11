@@ -9,7 +9,8 @@
   - `partner@pinklights.com` / `Test1234!`
 - [ ] Copy each user's UUID from the Auth dashboard
 - [ ] Uncomment Section 7 in `supabase/seed.sql`, paste the UUIDs, and run that block
-- [ ] Run the migration `supabase/migrations/20260406_day_credits_payment.sql` in SQL Editor (adds payment system on top of seed schema)
+- [ ] Run the migration `supabase/migrations/20260406000000_day_credits_payment.sql` in SQL Editor (adds payment system on top of seed schema)
+- [ ] Run `supabase/migrations/20260724000200_invoice_system.sql` (invoices, acatha_sessions, invoice PDF bucket)
 
 ## 2. Environment Variables (`.env`)
 - [ ] Update `VITE_SUPABASE_URL` with new project URL (Project Settings > API)
@@ -36,11 +37,12 @@
 ## 5. Deploy Edge Functions
 - [ ] Install Supabase CLI (`npm install -g supabase`)
 - [ ] Link project: `supabase link --project-ref <your-project-ref>`
-- [ ] Deploy functions:
-  - `supabase functions deploy create-payment`
-  - `supabase functions deploy payment-callback`
-  - `supabase functions deploy calculate-drive-time`
-  - `supabase functions deploy generate-about-me`
+- [ ] Deploy functions (`supabase functions deploy <name>`):
+  - `create-payment`, `payment-callback`, `calculate-drive-time`, `generate-about-me`
+  - `generate-magic-link`, `generate-invoice`, `get-invoice-pdf`
+- [ ] `verify_jwt` is pinned per function in `supabase/config.toml`. Do not deploy
+  `payment-callback` without it — the CLI defaults to `true` and that breaks the
+  DitoBanx webhook.
 
 ## 6. Edge Function Secrets (Server-Side)
 - [ ] Set `OPENAI_API_KEY` in Supabase Edge Function Secrets (for bio generation)
