@@ -66,8 +66,26 @@ Everything below is what still stands between that and real emission.
 Emitter `nit`, `nrc` and `nombre` come from the Acatha login response, not from
 secrets — they follow automatically once production credentials are in place.
 
+## 3b. DitoBanx (payment gateway)
+
+- [ ] `DITOBANX_API_URL` resolves to `pay.ditobanx.com` — the **production**
+      gateway, not a sandbox. Ask whether a test environment exists; today every
+      test opens a real session and a completed one is a real charge.
+- [ ] `ditobanx_session_id` is always null: their session response returns
+      `redirect_url` but no `session_id`/`id`, so sessions cannot be correlated
+      on their side. Ask which field carries it.
+- [ ] `customer.name` must be two or more words of two or more ASCII letters.
+      Digits, single words and accented characters are all rejected — "Maria
+      Jose Perez" with accents fails. Raise this: accented names are normal in
+      El Salvador and their gateway refuses them outright.
+- [ ] `SITE_URL` was pointing at a Vercel deployment-specific preview URL, so
+      after paying, customers landed on Vercel's deployment-protection page
+      instead of `/payment-success`. Now `https://www.pink-lights.be`. Re-check
+      this whenever the frontend host changes.
+
 ## 4. Cleanup
 
+- [ ] `supabase functions delete dito-test` — temporary DitoBanx validation probe.
 - [ ] `supabase functions delete acatha-items` — temporary diagnostic. Supports
       `list`, `create`, `units`, `numberToWords`, `tlsTest`. Keep until the item
       code is settled.

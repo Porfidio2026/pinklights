@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       };
     }
 
-    return Response.json({ apiHost: new URL(API).host, results });
+    return Response.json({ apiHost: new URL(API).host, siteUrl: SITE_URL, results });
   } catch (err) {
     return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
