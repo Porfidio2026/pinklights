@@ -32,6 +32,106 @@ const env = (key: string): string => {
 const optEnv = (key: string, fallback: string): string =>
   Deno.env.get(key) || fallback;
 
+/**
+ * Optional HTTP client carrying an extra CA certificate.
+ *
+ * dev.acatha.com:3000 serves only its leaf certificate and omits the Sectigo
+ * intermediate, so Deno cannot build a chain to a trusted root and refuses the
+ * connection. macOS and curl paper over this by fetching the intermediate via
+ * AIA; Deno does not. Supplying the intermediate through ACATHA_CA_CERT
+ * completes the chain. This still verifies the certificate fully, it is not a
+ * bypass. Production (sv.acatha.io:3000) serves a complete chain and should
+ * leave the variable unset.
+ */
+let haciendaClient: unknown;
+let haciendaClientInit = false;
+
+function getHaciendaClient(): unknown {
+  if (haciendaClientInit) return haciendaClient;
+  haciendaClientInit = true;
+
+  const pem = Deno.env.get('ACATHA_CA_CERT');
+  const create = (Deno as { createHttpClient?: (o: { caCerts: string[] }) => unknown })
+    .createHttpClient;
+
+  if (pem && typeof create === 'function') {
+    try {
+      haciendaClient = create({ caCerts: [pem] });
+      console.log('[Acatha] Using supplemental CA certificate for Hacienda');
+    } catch (err) {
+      console.error('[Acatha] Could not build CA-pinned client:', err);
+    }
+  }
+  return haciendaClient;
+}
+
+// ── Amount in words (resumen.totalLetras) ────────────────────────────
+
+const UNIDADES = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE',
+  'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE',
+  'DIECIOCHO', 'DIECINUEVE', 'VEINTE'];
+const DECENAS = ['', '', 'VEINTI', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA',
+  'OCHENTA', 'NOVENTA'];
+const CENTENAS = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS',
+  'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+function centenasALetras(n: number): string {
+  if (n === 0) return '';
+  if (n === 100) return 'CIEN';
+  const c = Math.floor(n / 100);
+  const r = n % 100;
+  const head = CENTENAS[c];
+  if (r === 0) return head;
+  let tail: string;
+  if (r <= 20) tail = UNIDADES[r];
+  else {
+    const d = Math.floor(r / 10);
+    const u = r % 10;
+    tail = d === 2 ? `VEINTI${UNIDADES[u]}` : (u === 0 ? DECENAS[d] : `${DECENAS[d]} Y ${UNIDADES[u]}`);
+  }
+  return head ? `${head} ${tail}` : tail;
+}
+
+function enteroALetras(n: number): string {
+  if (n === 0) return 'CERO';
+  if (n < 1000) return centenasALetras(n);
+  const miles = Math.floor(n / 1000);
+  const resto = n % 1000;
+  const prefix = miles === 1 ? 'MIL' : `${centenasALetras(miles)} MIL`;
+  return resto === 0 ? prefix : `${prefix} ${centenasALetras(resto)}`;
+}
+
+/** Local fallback in the same shape Acatha returns: "CINCO 00/100 DOLARES". */
+export function totalLetrasLocal(amount: number): string {
+  const entero = Math.floor(amount);
+  const centavos = Math.round((amount - entero) * 100);
+  return `${enteroALetras(entero)} ${String(centavos).padStart(2, '0')}/100 DOLARES`;
+}
+
+/**
+ * Amount in words for resumen.totalLetras, which Hacienda requires non-empty.
+ *
+ * Prefers Acatha's own converter so the wording matches what they expect, but
+ * that endpoint duplicates the fraction ("CINCO 00/100 ES00/100 DOLARES"), so
+ * the stray "ES<nn>/100" is stripped. Falls back to the local converter if the
+ * call fails, since an empty value is an automatic rejection.
+ */
+async function totalEnLetras(session: AcathaSession, amount: number): Promise<string> {
+  try {
+    const res = await fetch(
+      acathaUrl(`/integraciones/sv/numberToWords?cifra=${amount.toFixed(2)}`),
+      { headers: sessionHeaders(session) },
+    );
+    const data = await res.json();
+    const raw = typeof data.auto === 'string' ? data.auto : '';
+    const cleaned = raw.replace(/\s*ES\d+\/100/g, '').replace(/\s+/g, ' ').trim();
+    if (cleaned) return cleaned;
+  } catch (err) {
+    console.error('[Acatha] numberToWords failed, using local converter:', err);
+  }
+  return totalLetrasLocal(amount);
+}
+
 // ── Result type ──────────────────────────────────────────────────────
 export type Result<T> =
   | { ok: true; data: T }
@@ -379,7 +479,12 @@ export async function createDTE(
     const ptoEmision = saleData.auto?.puntoEmision || '001';
     const establecimiento = saleData.auto?.establecimiento || '001';
     const numero = saleData.auto?.numero || '000000000000001';
-    const controlNumber = `DTE-01-M${establecimiento.padStart(3, '0')}P${ptoEmision.padStart(3, '0')}-${numero}`;
+    // MH requires exactly 31 characters: "DTE-01-" + 8 (MxxxPyyy) + "-" + a
+    // 15-digit sequence. Acatha returns the sequence unpadded, so pad it here or
+    // Hacienda rejects with "El numero de control debe tener al menos 31 caracteres".
+    const controlNumber =
+      `DTE-01-M${establecimiento.padStart(3, '0')}P${ptoEmision.padStart(3, '0')}` +
+      `-${String(numero).padStart(15, '0')}`;
 
     console.log(`[Acatha] Sale created: comprobante=${comprobante}, control=${controlNumber}`);
 
@@ -435,7 +540,8 @@ export async function createDTE(
           descuGravada: 0, porcentajeDescuento: 0, totalDescu: 0, tributos: null,
           subTotal: request.totalAmount, ivaRete1: 0, reteRenta: 0,
           montoTotalOperacion: totalPagar, totalNoGravado: 0,
-          totalPagar: totalPagar, totalLetras: '', totalIva: ivaAmount,
+          totalPagar: totalPagar, totalLetras: await totalEnLetras(session, totalPagar),
+          totalIva: ivaAmount,
           saldoFavor: 0, condicionOperacion: 1,
           pagos: [{ codigo: '01', montoPago: totalPagar, referencia: '', plazo: null, periodo: null }],
           numPagoElectronico: null,
@@ -443,6 +549,7 @@ export async function createDTE(
         extension: null, apendice: null,
       };
 
+      const client = getHaciendaClient();
       const haciendaRes = await fetch(haciendaUrl('facturacion-electronica/consumidor-final'), {
         method: 'POST', headers,
         body: JSON.stringify({
@@ -450,7 +557,8 @@ export async function createDTE(
           idEnvio: 1,
           consumidorFinal: { nit: session.companyRuc, activo: true, dteJson },
         }),
-      });
+        ...(client ? { client } : {}),
+      } as RequestInit);
       const haciendaData = await haciendaRes.json();
       haciendaResponse = haciendaData;
       const msg = haciendaData.body?.message || haciendaData;
