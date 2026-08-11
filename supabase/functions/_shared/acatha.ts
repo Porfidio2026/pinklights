@@ -272,6 +272,8 @@ export async function createDTE(
   controlNumber: string;
   generationCode: string;
   selloRecibido: string;
+  haciendaError: string;
+  haciendaResponse: Record<string, unknown>;
   pdfUrl: string | null;
   rawResponse: Record<string, unknown>;
 }>> {
@@ -383,6 +385,8 @@ export async function createDTE(
 
     // ── Step 2: Submit to Hacienda ──
     let selloRecibido = '';
+    let haciendaError = '';
+    let haciendaResponse: Record<string, unknown> = {};
     const codActividad = optEnv('ACATHA_COD_ACTIVIDAD', '62010');
     try {
       const dteJson = {
@@ -448,11 +452,25 @@ export async function createDTE(
         }),
       });
       const haciendaData = await haciendaRes.json();
+      haciendaResponse = haciendaData;
       const msg = haciendaData.body?.message || haciendaData;
       selloRecibido = msg.selloRecibido || haciendaData.selloRecibido || '';
       console.log(`[Acatha] Hacienda: estado=${msg.estado || '?'}, sello=${selloRecibido ? 'yes' : 'no'}`);
+
+      if (!selloRecibido) {
+        // Hacienda rejects with the reason in descripcionMsg/observaciones.
+        // Surface it: without this the caller only sees "no sello" and has no
+        // way to find out which field the DTE was rejected for.
+        const obs = Array.isArray(msg.observaciones)
+          ? msg.observaciones.join('; ')
+          : (msg.observaciones || '');
+        haciendaError = [msg.estado, msg.descripcionMsg, obs]
+          .filter(Boolean).join(' | ') || JSON.stringify(haciendaData).slice(0, 500);
+        console.error(`[Acatha] Hacienda rejected: ${haciendaError}`);
+      }
     } catch (hErr) {
-      console.error('[Acatha] Hacienda failed (non-fatal):', hErr);
+      haciendaError = `Hacienda request failed: ${hErr instanceof Error ? hErr.message : String(hErr)}`;
+      console.error('[Acatha]', haciendaError);
     }
 
     // ── Step 3: Register Hacienda authorization ──
@@ -537,6 +555,8 @@ export async function createDTE(
         // Acatha either way, but without a sello it is not a valid DTE, so the
         // caller has to be able to tell the difference.
         selloRecibido,
+        haciendaError,
+        haciendaResponse,
         pdfUrl,
         rawResponse: saleData,
       },
