@@ -146,6 +146,7 @@ Deno.serve(async (req) => {
             dteJson: dteResult.data.dteJson,
             hacienda: dteResult.data.haciendaResponse,
             sale: dteResult.data.rawResponse,
+            trace: dteResult.data.trace,
           };
           console.log(`Acatha DTE created: ${dteNumber}`);
 

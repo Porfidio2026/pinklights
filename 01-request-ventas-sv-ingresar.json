@@ -1,0 +1,115 @@
+{
+  "metodo": "POST",
+  "url": "https://dev.acatha.com/amfphp/Services/SIGNUM/API/v4/ventas/sv/ingresar",
+  "request": {
+    "items": [
+      {
+        "cantidad": 1,
+        "impuestos": [
+          {
+            "valor": 0.58,
+            "codigo": 2,
+            "tarifa": "13",
+            "base_imponible": 5,
+            "codigo_porcentaje": 3
+          }
+        ],
+        "descripcion": "Pinklights - 1 day credit visibility package",
+        "codigo_auxiliar": "0001",
+        "descuento_valor": 0,
+        "precio_unitario": 5,
+        "codigo_principal": "0001",
+        "descuento_porcentaje": 0,
+        "detalles_adicionales": {},
+        "precio_total_sin_impuestos": 5
+      }
+    ],
+    "local": {
+      "clase": "0",
+      "codigo": 2469,
+      "estado": 1,
+      "nombre": "Principal",
+      "descuento": 100
+    },
+    "pagos": [
+      {
+        "medio": "EFECTIVO",
+        "total": 5,
+        "id_medio": "6"
+      }
+    ],
+    "cuotas": [],
+    "emisor": {
+      "ruc": "03091104891019",
+      "direccion": "",
+      "razon_social": "SV Capacitaciones SV",
+      "establecimiento": {
+        "codigo": "2469",
+        "direccion": "",
+        "punto_emision": "001"
+      },
+      "nombre_comercial": "SV Capacitaciones SV",
+      "obligado_contabilidad": true,
+      "contribuyente_especial": ""
+    },
+    "moneda": "USD",
+    "pventa": "devacatha@gmail.com",
+    "tipodoc": "01",
+    "totales": {
+      "propina": 0,
+      "noSujeto": 0,
+      "subtotal": 5,
+      "descuento": 0,
+      "impuestos": [
+        {
+          "valor": 0.58,
+          "codigo": 2,
+          "base_imponible": 5,
+          "codigo_porcentaje": "3",
+          "descuento_adicional": 0
+        }
+      ],
+      "subtotal0": 0,
+      "subtotal5": 0,
+      "retenerIva": 0,
+      "subtotal12": 5,
+      "totalExenta": 0,
+      "retenerRenta": 0,
+      "totalGravada": 5,
+      "importe_total": 5,
+      "descuento_adicional": 0,
+      "total_sin_impuestos": 5
+    },
+    "ambiente": "1",
+    "sucursal": null,
+    "vendedor": {
+      "codigo": null
+    },
+    "comprador": {
+      "email": "tester02@test.com",
+      "ciudad": "",
+      "nombres": "CLIENTES VARIOS",
+      "telefono": "S/T",
+      "direccion": "N/A",
+      "razon_social": "",
+      "identificacion": "9999999999999",
+      "tipo_identificacion": "12"
+    },
+    "formaPago": {
+      "label": "EFECTIVO",
+      "value": 6
+    },
+    "tiposPagos": [],
+    "tipo_emision": "1",
+    "fecha_emision": "11/08/2026",
+    "identificador": "38160012-FA5C-4680-A968-0199C836D0D9",
+    "observaciones": "Pinklights - 1 day credit visibility package",
+    "clienteNombreAlterno": "",
+    "informacion_adicional": {
+      "Cliente": "tester02",
+      "Telefono": "S/T",
+      "Direccion": "N/A",
+      "Enviado_a": "tester02@test.com"
+    }
+  }
+}

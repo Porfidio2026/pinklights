@@ -1,0 +1,88 @@
+{
+  "metodo": "POST",
+  "url": "https://dev.acatha.com/amfphp/Services/SIGNUM/API/v4/generales/pdfGenerate",
+  "request": {
+    "reportSV": {
+      "pdfHacienda": {
+        "local": {
+          "codigo": 2469,
+          "nombre": "Principal",
+          "telefono": "",
+          "direccion": ""
+        },
+        "fileName": "202612CEBD0B789D4951A1F2337E6A4C00964GQD",
+        "template": "SVRideFactura",
+        "reportData": [
+          {
+            "Totals": {
+              "Subtotal": 5,
+              "TotSales": 5,
+              "TotalPay": 5,
+              "IvaDetained": 0,
+              "IvaPorcentaje": [
+                {
+                  "Valor": 0.58,
+                  "Porcentaje": 13
+                }
+              ],
+              "RetenctionRent": 0,
+              "MountTotalOperation": 5
+            },
+            "Details": [
+              {
+                "Cant": 1,
+                "Code": "0001",
+                "Name": "Pinklights - 1 day credit visibility package",
+                "Unite": 99,
+                "Number": 1,
+                "SaleSaved": 5,
+                "UnitPrice": 5,
+                "SaleExcent": 0,
+                "DiscountIte": 0,
+                "SaleUnSujet": 0
+              }
+            ],
+            "Receiver": {
+              "Nit": "",
+              "Email": "tester02@test.com",
+              "Phone": "S/T",
+              "Direction": "N/A",
+              "ComertialName": "CLIENTES VARIOS",
+              "EconomicActivity": "",
+              "StablishmentType": ""
+            },
+            "InvoiceDate": "2026-08-11",
+            "Transmitter": {
+              "Nit": "03091104891019",
+              "Nrc": "2566854",
+              "Email": "devacatha@gmail.com",
+              "Phone": "",
+              "Direction": "",
+              "BusinessName": "SV Capacitaciones SV",
+              "ComertialName": "SV Capacitaciones SV",
+              "EconomicActivity": "Servicios",
+              "StablishmentType": "01"
+            },
+            "ReceiptStamp": "202612CEBD0B789D4951A1F2337E6A4C00964GQD",
+            "CodeGenerated": "38160012-FA5C-4680-A968-0199C836D0D9",
+            "ControlNumber": "DTE-01-M001P760-000000000000016",
+            "EmissionPoint": "760",
+            "Establishment": "001",
+            "ValueInLetters": "",
+            "TransactionType": "FACTURA",
+            "ConditionOperation": "Contado"
+          }
+        ]
+      },
+      "jsonHacienda": {
+        "idEnvio": 1,
+        "consumidorFinal": {
+          "nit": "03091104891019",
+          "activo": true,
+          "dteJson": {}
+        }
+      }
+    },
+    "identificador": "38160012-FA5C-4680-A968-0199C836D0D9"
+  }
+}

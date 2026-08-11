@@ -367,6 +367,7 @@ export async function createDTE(
   session: AcathaSession,
   request: DTERequest,
 ): Promise<Result<{
+  trace: Array<Record<string, unknown>>;
   dteId: string;
   dteNumber: string;
   controlNumber: string;
@@ -378,6 +379,13 @@ export async function createDTE(
   pdfUrl: string | null;
   rawResponse: Record<string, unknown>;
 }>> {
+  // Every outbound call is recorded so a rejection can be handed to Acatha
+  // verbatim instead of described. registerAuth and pdfGenerate are non-fatal,
+  // which previously meant their failures were invisible.
+  const trace: Array<Record<string, unknown>> = [];
+  const record = (step: string, url: string, req: unknown, res: unknown) =>
+    trace.push({ step, url, request: req, response: res });
+
   try {
     const headers = sessionHeaders(session);
     const generationCode = crypto.randomUUID().toUpperCase();
@@ -470,6 +478,7 @@ export async function createDTE(
       method: 'POST', headers, body: JSON.stringify(saleBody),
     });
     const saleData = await saleRes.json();
+    record('1. ventas/sv/ingresar', acathaUrl('/ventas/sv/ingresar'), saleBody, saleData);
 
     if (saleData.error) {
       return { ok: false, error: `Sale creation failed: ${saleData.message || JSON.stringify(saleData)}` };
@@ -554,17 +563,20 @@ export async function createDTE(
       transmittedDte = dteJson;
 
       const client = getHaciendaClient();
+      const haciendaBody = {
+        cliente: { ref: optEnv('ACATHA_COMPANY_UUID', '') },
+        idEnvio: 1,
+        consumidorFinal: { nit: session.companyRuc, activo: true, dteJson },
+      };
       const haciendaRes = await fetch(haciendaUrl('facturacion-electronica/consumidor-final'), {
         method: 'POST', headers,
-        body: JSON.stringify({
-          cliente: { ref: optEnv('ACATHA_COMPANY_UUID', '') },
-          idEnvio: 1,
-          consumidorFinal: { nit: session.companyRuc, activo: true, dteJson },
-        }),
+        body: JSON.stringify(haciendaBody),
         ...(client ? { client } : {}),
       } as RequestInit);
       const haciendaData = await haciendaRes.json();
       haciendaResponse = haciendaData;
+      record('2. facturacion-electronica/consumidor-final',
+        haciendaUrl('facturacion-electronica/consumidor-final'), haciendaBody, haciendaData);
       const msg = haciendaData.body?.message || haciendaData;
       selloRecibido = msg.selloRecibido || haciendaData.selloRecibido || '';
       console.log(`[Acatha] Hacienda: estado=${msg.estado || '?'}, sello=${selloRecibido ? 'yes' : 'no'}`);
@@ -588,10 +600,25 @@ export async function createDTE(
     // ── Step 3: Register Hacienda authorization ──
     if (selloRecibido) {
       try {
-        await fetch(acathaUrl('/ventas/registerAuth'), {
-          method: 'POST', headers,
-          body: JSON.stringify({ identificador: generationCode, selloRecibido, fhProcesamiento: new Date().toISOString() }),
+        // Confirmed with Acatha: registerAuth takes Hacienda's reply verbatim
+        // under `authResponse`. The published docs show a reportSV/pdfHacienda
+        // shape, which belongs to generales/pdfGenerate; sending that here makes
+        // their handler return HTTP 500 (array_merge on null).
+        const raBody = {
+          identificador: generationCode,
+          authResponse: haciendaResponse,
+        };
+        const raRes = await fetch(acathaUrl('/ventas/registerAuth'), {
+          method: 'POST', headers, body: JSON.stringify(raBody),
         });
+        const raText = await raRes.text();
+        let raData: unknown;
+        try { raData = JSON.parse(raText); }
+        catch { raData = { _nonJson: true, httpStatus: raRes.status, body: raText.slice(0, 800) }; }
+        record('3. ventas/registerAuth', acathaUrl('/ventas/registerAuth'), raBody, raData);
+        if ((raData as { error?: boolean })?.error) {
+          console.error('[Acatha] registerAuth error:', (raData as { message?: string }).message);
+        }
       } catch (raErr) {
         console.error('[Acatha] registerAuth failed (non-fatal):', raErr);
       }
@@ -639,13 +666,17 @@ export async function createDTE(
         },
       };
 
-      await fetch(acathaUrl('/generales/pdfGenerate'), {
+      const pdfRes = await fetch(acathaUrl('/generales/pdfGenerate'), {
         method: 'POST', headers, body: JSON.stringify(pdfBody),
       });
+      const pdfData = await pdfRes.json().catch(() => ({ _nonJson: true }));
+      record('4. generales/pdfGenerate', acathaUrl('/generales/pdfGenerate'), pdfBody, pdfData);
+      if (pdfData?.error) console.error('[Acatha] pdfGenerate returned error:', pdfData.message);
 
       // Get PDF URL
       const filesRes = await fetch(acathaUrl(`/ventas/impresion?claveacceso=${generationCode}`), { headers });
       const filesData = await filesRes.json();
+      record('5. ventas/impresion', acathaUrl(`/ventas/impresion?claveacceso=${generationCode}`), null, filesData);
       if (filesData.auto?.url) {
         pdfUrl = filesData.auto.url;
       } else if (filesData.auto?.pdf) {
@@ -670,6 +701,7 @@ export async function createDTE(
         haciendaError,
         haciendaResponse,
         dteJson: transmittedDte,
+        trace,
         pdfUrl,
         rawResponse: saleData,
       },
