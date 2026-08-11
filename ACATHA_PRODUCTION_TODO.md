@@ -1,4 +1,7 @@
-# Acatha DTE — Open Items Before Production
+# Production Readiness — Open Items
+
+Covers the Acatha DTE integration, the DitoBanx payment gateway, and
+infrastructure issues found while testing them.
 
 Status as of 2026-08-11. The pipeline **works end to end against dev Acatha**:
 Hacienda stamped `DTE-01-M001P760-000000000000008` with sello
@@ -82,6 +85,33 @@ secrets — they follow automatically once production credentials are in place.
       after paying, customers landed on Vercel's deployment-protection page
       instead of `/payment-success`. Now `https://www.pink-lights.be`. Re-check
       this whenever the frontend host changes.
+
+## 3c. Supabase Storage — ownership mismatch (platform side)
+
+- [ ] Report to Supabase support. Postgres logs repeat
+      `42501 must be owner of function storage.get_level` in a retry loop.
+      Eight functions in the `storage` schema — `add_prefixes`, `delete_prefix`,
+      `delete_prefix_hierarchy_trigger`, `get_level`, `get_prefix`,
+      `get_prefixes`, `objects_insert_prefix_trigger`, `prefixes_insert_trigger`
+      — are owned by `supabase_admin`, while every other `storage` function is
+      owned by `supabase_storage_admin`. The Storage service runs as the latter,
+      so it cannot re-apply the migration that defines them.
+
+      **Not caused by our migrations**: none of those functions appear in
+      `supabase/migrations/`; ours only inserts a bucket row and creates policies
+      on `storage.objects`.
+
+      **No user impact, verified**: authenticated upload to `profile_pictures`,
+      public read, bucket listing (which is exactly what `get_level` /
+      `get_prefix` back), real profile photos, and invoice PDF upload/read all
+      return 200. The functions execute fine; only `ALTER` on them fails.
+
+      **Risk is deferred**: Storage has a migration it cannot finish, so a future
+      Storage upgrade may stall.
+
+      **Do not "fix" it locally.** `ALTER FUNCTION ... OWNER TO
+      supabase_storage_admin` would probably fail as `postgres` anyway, and if it
+      succeeded it would fight the platform's next migration.
 
 ## 4. Cleanup
 
