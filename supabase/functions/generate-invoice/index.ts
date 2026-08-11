@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
     let selloRecibido = '';
     let dteId = '';
     let rawResponse: Record<string, unknown> = {};
+    let acathaError = '';
 
     try {
       const loginResult = await acathaLogin(supabase);
@@ -138,19 +139,32 @@ Deno.serve(async (req) => {
           dteNumber = dteResult.data.dteNumber;
           controlNumber = dteResult.data.controlNumber;
           generationCode = dteResult.data.generationCode;
+          selloRecibido = dteResult.data.selloRecibido;
           rawResponse = dteResult.data.rawResponse;
           console.log(`Acatha DTE created: ${dteNumber}`);
+
+          if (!selloRecibido) {
+            acathaError = 'Sale created in Acatha but Hacienda returned no sello; document is not a valid DTE';
+          }
         } else {
-          console.error('Acatha DTE failed (non-fatal):', dteResult.error);
+          acathaError = dteResult.error;
         }
       } else {
-        console.error('Acatha login failed (non-fatal):', loginResult.error);
+        acathaError = `Acatha login failed: ${loginResult.error}`;
       }
     } catch (acathaErr) {
-      console.error('Acatha integration failed (non-fatal):', acathaErr);
+      acathaError = acathaErr instanceof Error ? acathaErr.message : String(acathaErr);
     }
 
-    // Use fallback values if Acatha didn't work
+    if (acathaError) console.error('Acatha integration problem:', acathaError);
+
+    // A DTE is only fiscally valid once Hacienda stamps it. Anything short of
+    // that is a failure, even though we still produce a PDF below so the
+    // customer has a receipt and an admin can retry.
+    const isValidDte = Boolean(dteNumber && selloRecibido);
+
+    // Local placeholders so the PDF can still be rendered. The INV- prefix keeps
+    // these visibly distinct from a real MH control number (DTE-01-...).
     if (!generationCode) generationCode = crypto.randomUUID().toUpperCase();
     if (!dteNumber) dteNumber = `INV-${invoiceId.substring(0, 8).toUpperCase()}`;
     if (!controlNumber) controlNumber = dteNumber;
@@ -182,23 +196,35 @@ Deno.serve(async (req) => {
     await supabase
       .from('invoices')
       .update({
-        status: 'completed',
+        status: isValidDte ? 'completed' : 'failed',
+        error_message: acathaError || null,
         acatha_dte_id: dteId || null,
         dte_number: dteNumber,
         control_number: controlNumber,
         generation_code: generationCode,
         pdf_url: pdfUrl,
         json_dte: rawResponse,
-        completed_at: new Date().toISOString(),
+        completed_at: isValidDte ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', invoiceId);
 
-    console.log(`Invoice ${invoiceId} completed (DTE: ${dteNumber}, PDF: ${pdfUrl})`);
+    if (isValidDte) {
+      console.log(`Invoice ${invoiceId} completed (DTE: ${dteNumber}, PDF: ${pdfUrl})`);
+    } else {
+      console.error(`Invoice ${invoiceId} failed: ${acathaError}`);
+    }
 
     return new Response(
-      JSON.stringify({ ok: true, invoice_id: invoiceId, dte_number: dteNumber, pdf_url: pdfUrl }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
+      JSON.stringify({
+        ok: isValidDte,
+        invoice_id: invoiceId,
+        dte_number: dteNumber,
+        sello_recibido: selloRecibido || null,
+        pdf_url: pdfUrl,
+        error: acathaError || undefined,
+      }),
+      { status: isValidDte ? 200 : 502, headers: { 'Content-Type': 'application/json' } },
     );
   } catch (error) {
     console.error('Error in generate-invoice:', error);

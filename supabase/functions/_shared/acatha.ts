@@ -27,6 +27,11 @@ const env = (key: string): string => {
   return v;
 };
 
+// Optional counterpart to env(). Note that `env(key) || fallback` does NOT work
+// as a default: env() throws before the || is ever evaluated.
+const optEnv = (key: string, fallback: string): string =>
+  Deno.env.get(key) || fallback;
+
 // ── Result type ──────────────────────────────────────────────────────
 export type Result<T> =
   | { ok: true; data: T }
@@ -266,6 +271,7 @@ export async function createDTE(
   dteNumber: string;
   controlNumber: string;
   generationCode: string;
+  selloRecibido: string;
   pdfUrl: string | null;
   rawResponse: Record<string, unknown>;
 }>> {
@@ -285,7 +291,7 @@ export async function createDTE(
     const consumer = getGenericConsumer();
 
     // Use a test item code that exists in Acatha inventory
-    const itemCode = env('ACATHA_ITEM_CODE') || '000006';
+    const itemCode = optEnv('ACATHA_ITEM_CODE', '000006');
 
     // ── Step 1: Create sale in Acatha ──
     const saleBody = {
@@ -337,7 +343,9 @@ export async function createDTE(
       observaciones: request.items[0]?.description || 'Pinklights Purchase',
       moneda: 'USD',
       formaPago: { value: 6, label: 'EFECTIVO' },
-      ambiente: '1',
+      // Acatha's own sale-environment flag, distinct from the MH `ambiente`
+      // below and using a different code set. Left as-is by default.
+      ambiente: optEnv('ACATHA_AMBIENTE_VENTA', '1'),
       items: request.items.map((item, i) => ({
         codigo_auxiliar: itemCode,
         codigo_principal: itemCode,
@@ -375,24 +383,35 @@ export async function createDTE(
 
     // ── Step 2: Submit to Hacienda ──
     let selloRecibido = '';
-    const codActividad = env('ACATHA_COD_ACTIVIDAD') || '62010';
+    const codActividad = optEnv('ACATHA_COD_ACTIVIDAD', '62010');
     try {
       const dteJson = {
         identificacion: {
-          version: 1, ambiente: '00', tipoDte: '01',
+          // Ministerio de Hacienda environment: '00' = pruebas, '01' = produccion.
+          // Defaults to pruebas so production emission is an explicit opt-in.
+          version: 1, ambiente: optEnv('ACATHA_AMBIENTE', '00'), tipoDte: '01',
           numeroControl: controlNumber, codigoGeneracion: generationCode,
           tipoModelo: 1, tipoOperacion: 1,
           tipoContingencia: null, motivoContin: null,
           fecEmi: dateStr, horEmi: timeStr, tipoMoneda: 'USD',
         },
         documentoRelacionado: null,
+        // Emitter identity must match what is registered with Hacienda. Every
+        // field is overridable so moving to production is a secrets change
+        // rather than a code change.
         emisor: {
           nit: session.companyRuc, nrc: session.companyNrc,
           nombre: session.companyName, codActividad,
-          descActividad: 'Servicios', nombreComercial: session.companyName,
+          descActividad: optEnv('ACATHA_EMISOR_DESC_ACTIVIDAD', 'Servicios'),
+          nombreComercial: session.companyName,
           tipoEstablecimiento: '01',
-          direccion: { departamento: '07', municipio: '01', complemento: 'SONSONATE' },
-          telefono: '', correo: env('ACATHA_USER'),
+          direccion: {
+            departamento: optEnv('ACATHA_EMISOR_DEPARTAMENTO', '07'),
+            municipio: optEnv('ACATHA_EMISOR_MUNICIPIO', '01'),
+            complemento: optEnv('ACATHA_EMISOR_DIRECCION', 'SONSONATE'),
+          },
+          telefono: optEnv('ACATHA_EMISOR_TELEFONO', ''),
+          correo: env('ACATHA_USER'),
           codEstableMH: null, codEstable: null, codPuntoVentaMH: null, codPuntoVenta: null,
         },
         receptor: null,
@@ -423,7 +442,7 @@ export async function createDTE(
       const haciendaRes = await fetch(haciendaUrl('facturacion-electronica/consumidor-final'), {
         method: 'POST', headers,
         body: JSON.stringify({
-          cliente: { ref: env('ACATHA_COMPANY_UUID') || '' },
+          cliente: { ref: optEnv('ACATHA_COMPANY_UUID', '') },
           idEnvio: 1,
           consumidorFinal: { nit: session.companyRuc, activo: true, dteJson },
         }),
@@ -514,6 +533,10 @@ export async function createDTE(
         dteNumber: controlNumber,
         controlNumber,
         generationCode,
+        // Empty when Hacienda did not stamp the document. The sale exists in
+        // Acatha either way, but without a sello it is not a valid DTE, so the
+        // caller has to be able to tell the difference.
+        selloRecibido,
         pdfUrl,
         rawResponse: saleData,
       },
