@@ -140,7 +140,13 @@ Deno.serve(async (req) => {
           controlNumber = dteResult.data.controlNumber;
           generationCode = dteResult.data.generationCode;
           selloRecibido = dteResult.data.selloRecibido;
-          rawResponse = dteResult.data.rawResponse;
+          // Store what Hacienda actually received, plus its reply. Required for
+          // audit and the only way to reconstruct a rejected document.
+          rawResponse = {
+            dteJson: dteResult.data.dteJson,
+            hacienda: dteResult.data.haciendaResponse,
+            sale: dteResult.data.rawResponse,
+          };
           console.log(`Acatha DTE created: ${dteNumber}`);
 
           if (!selloRecibido) {
@@ -149,7 +155,7 @@ Deno.serve(async (req) => {
               : 'Sale created in Acatha but Hacienda returned no sello; document is not a valid DTE';
             // Keep the raw Hacienda payload; the sale response is far less
             // useful than the rejection reason when debugging.
-            rawResponse = { sale: rawResponse, hacienda: dteResult.data.haciendaResponse };
+            // already captured above
           }
         } else {
           acathaError = dteResult.error;

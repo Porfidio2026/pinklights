@@ -1,0 +1,95 @@
+{
+  "emisor": {
+    "nit": "03091104891019",
+    "nrc": "2566854",
+    "correo": "devacatha@gmail.com",
+    "nombre": "SV Capacitaciones SV",
+    "telefono": "2222-2222",
+    "direccion": {
+      "municipio": "01",
+      "complemento": "SONSONATE",
+      "departamento": "07"
+    },
+    "codEstable": null,
+    "codActividad": "62020",
+    "codEstableMH": null,
+    "codPuntoVenta": null,
+    "descActividad": "Consultorías y gestión de servicios informáticos",
+    "codPuntoVentaMH": null,
+    "nombreComercial": "SV Capacitaciones SV",
+    "tipoEstablecimiento": "01"
+  },
+  "resumen": {
+    "pagos": [
+      {
+        "plazo": null,
+        "codigo": "01",
+        "periodo": null,
+        "montoPago": 5,
+        "referencia": ""
+      }
+    ],
+    "ivaRete1": 0,
+    "subTotal": 5,
+    "totalIva": 0.58,
+    "tributos": null,
+    "reteRenta": 0,
+    "descuNoSuj": 0,
+    "saldoFavor": 0,
+    "totalDescu": 0,
+    "totalNoSuj": 0,
+    "totalPagar": 5,
+    "descuExenta": 0,
+    "totalExenta": 0,
+    "totalLetras": "CINCO 00/100 DOLARES",
+    "descuGravada": 0,
+    "totalGravada": 5,
+    "subTotalVentas": 5,
+    "totalNoGravado": 0,
+    "condicionOperacion": 1,
+    "numPagoElectronico": null,
+    "montoTotalOperacion": 5,
+    "porcentajeDescuento": 0
+  },
+  "apendice": null,
+  "receptor": null,
+  "extension": null,
+  "ventaTercero": null,
+  "identificacion": {
+    "fecEmi": "2026-08-11",
+    "horEmi": "15:31:52",
+    "tipoDte": "01",
+    "version": 1,
+    "ambiente": "00",
+    "tipoModelo": 1,
+    "tipoMoneda": "USD",
+    "motivoContin": null,
+    "numeroControl": "DTE-01-M001P760-000000000000012",
+    "tipoOperacion": 1,
+    "codigoGeneracion": "66B8E3DF-E5CE-49E7-8064-049E1923771D",
+    "tipoContingencia": null
+  },
+  "cuerpoDocumento": [
+    {
+      "psv": 0,
+      "codigo": "0001",
+      "ivaItem": 0.58,
+      "numItem": 1,
+      "cantidad": 1,
+      "tipoItem": 2,
+      "tributos": null,
+      "noGravado": 0,
+      "precioUni": 5,
+      "uniMedida": 99,
+      "codTributo": null,
+      "montoDescu": 0,
+      "ventaNoSuj": 0,
+      "descripcion": "Pinklights - 1 day credit visibility package",
+      "ventaExenta": 0,
+      "ventaGravada": 5,
+      "numeroDocumento": null
+    }
+  ],
+  "otrosDocumentos": null,
+  "documentoRelacionado": null
+}

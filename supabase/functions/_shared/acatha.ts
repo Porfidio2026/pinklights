@@ -374,6 +374,7 @@ export async function createDTE(
   selloRecibido: string;
   haciendaError: string;
   haciendaResponse: Record<string, unknown>;
+  dteJson: Record<string, unknown>;
   pdfUrl: string | null;
   rawResponse: Record<string, unknown>;
 }>> {
@@ -492,6 +493,8 @@ export async function createDTE(
     let selloRecibido = '';
     let haciendaError = '';
     let haciendaResponse: Record<string, unknown> = {};
+    // Kept for the invoice record: this is the exact payload Hacienda received.
+    let transmittedDte: Record<string, unknown> = {};
     const codActividad = optEnv('ACATHA_COD_ACTIVIDAD', '62010');
     try {
       const dteJson = {
@@ -548,6 +551,7 @@ export async function createDTE(
         },
         extension: null, apendice: null,
       };
+      transmittedDte = dteJson;
 
       const client = getHaciendaClient();
       const haciendaRes = await fetch(haciendaUrl('facturacion-electronica/consumidor-final'), {
@@ -665,6 +669,7 @@ export async function createDTE(
         selloRecibido,
         haciendaError,
         haciendaResponse,
+        dteJson: transmittedDte,
         pdfUrl,
         rawResponse: saleData,
       },
