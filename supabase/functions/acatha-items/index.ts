@@ -56,6 +56,15 @@ Deno.serve(async (req) => {
       return Response.json({ session, httpStatus: res.status, data });
     }
 
+    if (action === 'tipoId') {
+      const out: Record<string, string> = {};
+      for (const t of ['SV', 'sv', '1', '2', '01', 'N', 'J', 'natural']) {
+        const res = await fetch(apiUrl(`/cuenta/tipoId/listar?tipo=${t}`), { headers });
+        out[`tipo=${t}`] = (await res.text()).slice(0, 500);
+      }
+      return Response.json({ session, out });
+    }
+
     if (action === 'units') {
       const res = await fetch(apiUrl('/inventario/unidades/listar'), { headers });
       return Response.json({ session, data: await res.json() });
@@ -87,6 +96,189 @@ Deno.serve(async (req) => {
       });
       const data = await res.json();
       return Response.json({ session, httpStatus: res.status, sent: body.item, data });
+    }
+
+    if (action === 'ccfTest') {
+      // Comprobante de Credito Fiscal (tipoDte 03). Unlike Consumidor Final,
+      // prices are IVA-EXCLUSIVE, items carry tributos:["20"] instead of
+      // ivaItem, and a real taxpayer receptor is mandatory.
+      const net = Number(body.net ?? 10);
+      const iva = Math.round(net * 0.13 * 100) / 100;
+      const total = Math.round((net + iva) * 100) / 100;
+
+      const receptor = body.receptor ?? {
+        nit: '06141901901524',
+        nrc: '3260728',
+        nombre: 'INGRID BEATRIZ RIVERA ORTIZ /RAZON SOCIAL',
+        codActividad: '62090',
+        descActividad: 'Otras actividades de tecnología de la información',
+        nombreComercial: 'Ingrid Beatriz Rivera Ortiz',
+        direccion: { departamento: '03', municipio: '03', complemento: 'SAN SALVADOR' },
+        telefono: '+50332132166',
+        correo: 'test@pink-lights.be',
+      };
+
+      const generationCode = crypto.randomUUID().toUpperCase();
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10);
+      const timeStr = now.toISOString().slice(11, 19);
+
+      const steps: Record<string, unknown> = { net, iva, total, receptor };
+
+      // Step 1: register the sale in Acatha with tipodoc 03
+      const saleBody: any = {
+        identificador: generationCode,
+        tipodoc: '03',
+        tipo_emision: '1',
+        local: { codigo: parseInt(s.localCode), nombre: 'Principal', clase: '0', descuento: 100, estado: 1 },
+        pventa: Deno.env.get('ACATHA_USER'),
+        fecha_emision: `${dateStr.slice(8, 10)}/${dateStr.slice(5, 7)}/${dateStr.slice(0, 4)}`,
+        emisor: {
+          ruc: s.companyRuc, razon_social: s.companyName, nombre_comercial: s.companyName,
+          contribuyente_especial: '', direccion: '', obligado_contabilidad: true,
+          establecimiento: { punto_emision: '001', codigo: s.localCode, direccion: '' },
+        },
+        comprador: {
+          tipo_identificacion: '36',
+          identificacion: receptor.nit,
+          nombres: receptor.nombre,
+          razon_social: receptor.nombre,
+          direccion: receptor.direccion.complemento,
+          email: receptor.correo, telefono: receptor.telefono, ciudad: '',
+        },
+        informacion_adicional: { Cliente: receptor.nombre, Enviado_a: receptor.correo },
+        totales: {
+          total_sin_impuestos: net, importe_total: total,
+          propina: 0, descuento: 0, descuento_adicional: 0,
+          impuestos: [{ codigo: 2, codigo_porcentaje: '3', descuento_adicional: 0, base_imponible: net, valor: iva }],
+          retenerRenta: 0, retenerIva: 0,
+          subtotal: net, subtotal12: net, subtotal0: 0, noSujeto: 0, subtotal5: 0,
+          totalExenta: 0, totalGravada: net,
+        },
+        observaciones: 'Pinklights - CCF test',
+        moneda: 'USD',
+        formaPago: { value: 6, label: 'EFECTIVO' },
+        ambiente: Deno.env.get('ACATHA_AMBIENTE_VENTA') || '1',
+        items: [{
+          codigo_auxiliar: Deno.env.get('ACATHA_ITEM_CODE') || '0001',
+          codigo_principal: Deno.env.get('ACATHA_ITEM_CODE') || '0001',
+          precio_unitario: net, cantidad: 1, precio_total_sin_impuestos: net,
+          descripcion: 'Pinklights - visibility package (CCF test)',
+          descuento_porcentaje: 0, descuento_valor: 0, detalles_adicionales: {},
+          impuestos: [{ codigo: 2, tarifa: '13', codigo_porcentaje: 3, base_imponible: net, valor: iva }],
+        }],
+        cuotas: [], tiposPagos: [], clienteNombreAlterno: '',
+        pagos: [{ total: total, medio: 'EFECTIVO', id_medio: '6' }],
+        vendedor: { codigo: null }, sucursal: null,
+      };
+
+      // Acatha rejects unknown tipo_identificacion values with a generic
+      // "No se encuentra el tipo de identificacion tributario", and the
+      // cuenta/tipoId/listar catalog comes back empty, so probe the plausible
+      // codes and keep the first the API accepts.
+      const candidates: string[] = body.tipoIdent ? [body.tipoIdent] : ['36', '12', '13', '37', '02', '03'];
+      const probe: Record<string, string> = {};
+      let saleData: Record<string, unknown> | null = null;
+
+      for (const t of candidates) {
+        saleBody.comprador.tipo_identificacion = t;
+        saleBody.identificador = crypto.randomUUID().toUpperCase();
+        const r = await fetch(apiUrl('/ventas/sv/ingresar'), {
+          method: 'POST', headers, body: JSON.stringify(saleBody),
+        });
+        const d = await r.json();
+        probe[`tipo_identificacion=${t}`] = d.error ? String(d.message).slice(0, 120) : 'ACCEPTED';
+        if (!d.error) { saleData = d; steps.tipoIdentUsed = t; break; }
+      }
+      steps.probe = probe;
+      steps.sale = saleData;
+
+      if (!saleData) return Response.json({ session, steps }, { status: 502 });
+
+      const auto = (saleData as any).auto;
+      const estab = (auto?.establecimiento || '001').toString();
+      const pto = (auto?.puntoEmision || '001').toString();
+      const numero = (auto?.numero || '1').toString();
+      const controlNumber =
+        `DTE-03-M${estab.padStart(3, '0')}P${pto.padStart(3, '0')}-${numero.padStart(15, '0')}`;
+      steps.controlNumber = controlNumber;
+
+      // totalLetras via Acatha's converter, stripping its duplicated fraction
+      let totalLetras = '';
+      try {
+        const w = await fetch(apiUrl(`/integraciones/sv/numberToWords?cifra=${total.toFixed(2)}`), { headers });
+        const wd = await w.json();
+        totalLetras = String(wd.auto || '').replace(/\s*ES\d+\/100/g, '').replace(/\s+/g, ' ').trim();
+      } catch { /* fall through */ }
+      steps.totalLetras = totalLetras;
+
+      const dteJson = {
+        identificacion: {
+          version: 3, ambiente: Deno.env.get('ACATHA_AMBIENTE') || '00', tipoDte: '03',
+          numeroControl: controlNumber, codigoGeneracion: generationCode,
+          tipoModelo: 1, tipoOperacion: 1, tipoContingencia: null, motivoContin: null,
+          fecEmi: dateStr, horEmi: timeStr, tipoMoneda: 'USD',
+        },
+        documentoRelacionado: null,
+        emisor: {
+          nit: s.companyRuc, nrc: s.companyNrc, nombre: s.companyName,
+          codActividad: Deno.env.get('ACATHA_COD_ACTIVIDAD') || '62020',
+          descActividad: Deno.env.get('ACATHA_EMISOR_DESC_ACTIVIDAD') || 'Servicios',
+          nombreComercial: s.companyName, tipoEstablecimiento: '01',
+          direccion: {
+            departamento: Deno.env.get('ACATHA_EMISOR_DEPARTAMENTO') || '07',
+            municipio: Deno.env.get('ACATHA_EMISOR_MUNICIPIO') || '01',
+            complemento: Deno.env.get('ACATHA_EMISOR_DIRECCION') || 'SONSONATE',
+          },
+          telefono: Deno.env.get('ACATHA_EMISOR_TELEFONO') || '2222-2222',
+          correo: Deno.env.get('ACATHA_USER'),
+          codEstableMH: null, codEstable: null, codPuntoVentaMH: null, codPuntoVenta: null,
+        },
+        receptor,
+        otrosDocumentos: null, ventaTercero: null,
+        cuerpoDocumento: [{
+          numItem: 1, tipoItem: 2, numeroDocumento: null,
+          codigo: Deno.env.get('ACATHA_ITEM_CODE') || '0001', codTributo: null,
+          descripcion: 'Pinklights - visibility package (CCF test)',
+          cantidad: 1, uniMedida: 99, precioUni: net, montoDescu: 0,
+          ventaNoSuj: 0, ventaExenta: 0, ventaGravada: net,
+          tributos: ['20'], psv: 0, noGravado: 0,
+        }],
+        resumen: {
+          totalNoSuj: 0, totalExenta: 0, totalGravada: net,
+          subTotalVentas: net, descuNoSuj: 0, descuExenta: 0, descuGravada: 0,
+          porcentajeDescuento: 0, totalDescu: 0,
+          tributos: [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: iva }],
+          subTotal: net, ivaPerci1: 0, ivaRete1: 0, reteRenta: 0,
+          montoTotalOperacion: total, totalNoGravado: 0, totalPagar: total,
+          totalLetras, saldoFavor: 0, condicionOperacion: 1,
+          pagos: [{ codigo: '01', montoPago: total, referencia: '', plazo: null, periodo: null }],
+          numPagoElectronico: null,
+        },
+        extension: null, apendice: null,
+      };
+      steps.dteJson = dteJson;
+
+      const client = (() => {
+        const pem = Deno.env.get('ACATHA_CA_CERT');
+        const mk = (Deno as { createHttpClient?: (o: { caCerts: string[] }) => unknown }).createHttpClient;
+        return pem && typeof mk === 'function' ? mk({ caCerts: [pem] }) : undefined;
+      })();
+
+      const hRes = await fetch(
+        `${Deno.env.get('ACATHA_HACIENDA_URL')}/facturacion-electronica/credito-fiscal`,
+        {
+          method: 'POST', headers,
+          body: JSON.stringify({
+            cliente: { ref: Deno.env.get('ACATHA_COMPANY_UUID') || '' },
+            idEnvio: 1,
+            comprobanteCreditoFiscal: { nit: s.companyRuc, activo: true, dteJson },
+          }),
+          ...(client ? { client } : {}),
+        } as RequestInit,
+      );
+      steps.hacienda = await hRes.json();
+      return Response.json({ session, steps });
     }
 
     if (action === 'tlsTest') {
