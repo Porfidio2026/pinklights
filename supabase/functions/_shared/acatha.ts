@@ -600,13 +600,18 @@ export async function createDTE(
     // ── Step 3: Register Hacienda authorization ──
     if (selloRecibido) {
       try {
-        // Confirmed with Acatha: registerAuth takes Hacienda's reply verbatim
-        // under `authResponse`. The published docs show a reportSV/pdfHacienda
-        // shape, which belongs to generales/pdfGenerate; sending that here makes
-        // their handler return HTTP 500 (array_merge on null).
+        // Acatha's handler array_merges `extras`, so omitting it crashes the
+        // endpoint with "array_merge(): Argument #2 must be of type array, null
+        // given" (HTTP 500) no matter how correct the rest of the body is.
+        // `claveacceso` is the pre-authorization access key from the sale;
+        // registerAuth overwrites it with the sello once it succeeds.
+        const tipoComprobante = optEnv('ACATHA_TIPO_DTE', '01');
         const raBody = {
           identificador: generationCode,
+          tipoComprobante,
           authResponse: haciendaResponse,
+          extras: { ...haciendaResponse, claveacceso: autorizacion, tipoComprobante },
+          claveacceso: autorizacion,
         };
         const raRes = await fetch(acathaUrl('/ventas/registerAuth'), {
           method: 'POST', headers, body: JSON.stringify(raBody),

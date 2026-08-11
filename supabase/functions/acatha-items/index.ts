@@ -65,6 +65,16 @@ Deno.serve(async (req) => {
       return Response.json({ session, out });
     }
 
+    if (action === 'ventas') {
+      const qs = body.query ?? `local=${s.localCode}&isPaged=false&limit=200`;
+      const url = apiUrl(`/ventas/listar?${qs}`);
+      const res = await fetch(url, { headers });
+      const text = await res.text();
+      let data: unknown;
+      try { data = JSON.parse(text); } catch { data = { _nonJson: true, body: text.slice(0, 600) }; }
+      return Response.json({ session, url, httpStatus: res.status, data });
+    }
+
     if (action === 'units') {
       const res = await fetch(apiUrl('/inventario/unidades/listar'), { headers });
       return Response.json({ session, data: await res.json() });
