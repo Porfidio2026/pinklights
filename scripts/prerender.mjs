@@ -150,6 +150,12 @@ async function prerender() {
     try {
       page = await browser.newPage();
 
+      // Let components opt out of the snapshot. Must run before app code, so
+      // that live data (profile tiles) is never frozen into the static HTML.
+      await page.evaluateOnNewDocument(() => {
+        window.__PRERENDER__ = true;
+      });
+
       // 'domcontentloaded' rather than 'networkidle0': analytics and error
       // reporting hold connections open, so the network never goes idle and
       // every route would burn its full timeout. The h1 wait below is what

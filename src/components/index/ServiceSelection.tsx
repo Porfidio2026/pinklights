@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Lock, Phone, Heart, Sparkles } from 'lucide-react';
 import { RelatedProfiles } from '@/components/RelatedProfiles';
 import { ErrorBoundary } from './ErrorBoundary';
+import { isPrerender } from '@/utils/isPrerender';
 
 export type ServiceType = 'private' | 'outcall' | 'soft' | 'ropes' | null;
 
@@ -54,7 +55,7 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ setSelectedService,
   };
 
   return (
-    <div className="min-h-[85vh] flex flex-col items-center justify-center px-5 animate-fade-in relative">
+    <div className="min-h-[85vh] flex flex-col items-center justify-center px-5 animate-fade-in relative overflow-x-hidden">
       {/* Ambient glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-pink-500/[0.04] rounded-full blur-[120px] pointer-events-none" />
 
@@ -142,7 +143,10 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ setSelectedService,
       </div>
 
       {/* Suggested profiles — same list as under the search results, but with no
-          service or gender filter yet, since nothing has been chosen at step 1. */}
+          service or gender filter yet, since nothing has been chosen at step 1.
+          Skipped during prerendering so live profiles are not baked into the
+          static homepage, where a removed profile would persist until deploy. */}
+      {!isPrerender() && (
       <section className="relative z-10 w-full max-w-5xl mt-16 space-y-5">
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -155,6 +159,7 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ setSelectedService,
           <RelatedProfiles linkToProfiles />
         </ErrorBoundary>
       </section>
+      )}
     </div>
   );
 };
