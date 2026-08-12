@@ -1,24 +1,30 @@
 
 import React from 'react';
-import { cn } from '@/lib/utils';
 
 interface PageIndicatorProps {
   total: number;
   current: number;
 }
 
+/**
+ * Shows position in the result set as "2 / 10".
+ *
+ * This replaced a row of dots, which stopped being readable once a search
+ * returned more than a handful of profiles and never conveyed how many were
+ * left.
+ */
 export const PageIndicator: React.FC<PageIndicatorProps> = ({ total, current }) => {
+  if (!total) return null;
+
   return (
-    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 z-10">
-      {Array.from({ length: total }).map((_, index) => (
-        <div
-          key={index}
-          className={cn(
-            "w-2 h-2 rounded-full transition-all duration-300",
-            index === current ? "bg-primary w-4" : "bg-muted"
-          )}
-        />
-      ))}
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+      <div
+        className="rounded-full bg-background/50 backdrop-blur-sm px-3 py-1 text-sm font-medium text-white tabular-nums"
+        aria-live="polite"
+        aria-label={`Profile ${current + 1} of ${total}`}
+      >
+        {current + 1} <span className="text-white/60">/ {total}</span>
+      </div>
     </div>
   );
 };

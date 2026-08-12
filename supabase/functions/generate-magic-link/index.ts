@@ -3,6 +3,21 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SITE_URL = Deno.env.get('SITE_URL') || 'https://www.pink-lights.be';
+
+/**
+ * Find an auth user by exact email. supabase-js admin only exposes a paginated
+ * listUsers(), so query GoTrue's filter endpoint directly.
+ */
+async function findUserByEmail(email: string): Promise<{ id: string } | null> {
+  const res = await fetch(
+    `${SUPABASE_URL}/auth/v1/admin/users?filter=${encodeURIComponent(email)}`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return (data.users ?? []).find((u: { email?: string }) => u.email === email) ?? null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -86,24 +101,39 @@ Deno.serve(async (req) => {
     const normalizedPhone = profile.phone_number.replace(/[^0-9]/g, '');
     const syntheticEmail = `${normalizedPhone}@pinklights.app`;
 
-    // Create Supabase auth user
+    // Create the auth user, or reuse the existing one.
+    //
+    // The synthetic email is derived from the phone number, so two profiles
+    // sharing a number map to the same account and the second createUser call
+    // fails. Six profiles in production share a number with another, and for
+    // those this button used to return 500 every time, permanently. Reusing the
+    // existing account also makes re-sending an invite work.
+    let authUserId: string | null = null;
+
     const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
       email: syntheticEmail,
       email_confirm: true,
     });
 
     if (createError) {
-      console.error('Failed to create auth user:', createError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create user account', details: createError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const existing = await findUserByEmail(syntheticEmail);
+      if (!existing) {
+        console.error('Failed to create auth user:', createError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create user account', details: createError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log(`Reusing existing account for ${syntheticEmail}`);
+      authUserId = existing.id;
+    } else {
+      authUserId = newUser.user.id;
     }
 
     // Link the auth user to the profile
     const { error: linkError } = await supabase
       .from('profiles')
-      .update({ user_id: newUser.user.id })
+      .update({ user_id: authUserId })
       .eq('id', profileId);
 
     if (linkError) {
@@ -120,7 +150,7 @@ Deno.serve(async (req) => {
       email: syntheticEmail,
     });
 
-    if (linkGenError || !linkData) {
+    if (linkGenError || !linkData) {  // eslint-disable-line
       console.error('Failed to generate magic link:', linkGenError);
       return new Response(
         JSON.stringify({ error: 'Failed to generate magic link' }),
@@ -128,9 +158,18 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Hand out a pink-lights.be link rather than the raw Supabase action_link.
+    // The hashed token is the same credential; /auth/confirm exchanges it for a
+    // session via verifyOtp. Recipients see our domain, which matters when the
+    // link arrives cold over WhatsApp.
+    const magicLinkUrl =
+      `${SITE_URL}/auth/confirm` +
+      `?token_hash=${encodeURIComponent(linkData.properties.hashed_token)}` +
+      `&type=magiclink`;
+
     return new Response(
       JSON.stringify({
-        magicLinkUrl: linkData.properties.action_link,
+        magicLinkUrl,
         phone: profile.phone_number,
         name: profile.full_name,
       }),

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { NavigationBar } from './NavigationBar';
@@ -26,10 +26,15 @@ interface SearchResultsCarouselProps {
   onChangeSearch: () => void;
 }
 
+// Minimum horizontal travel before a touch counts as a swipe rather than a tap.
+const SWIPE_THRESHOLD_PX = 50;
+
 export const SearchResultsCarousel = ({ profiles, onChangeSearch }: SearchResultsCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasUserLocation, setHasUserLocation] = useState(false);
   const navigate = useNavigate();
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const didSwipe = useRef(false);
 
   useEffect(() => {
     // Check if user has shared location
@@ -48,7 +53,39 @@ export const SearchResultsCarousel = ({ profiles, onChangeSearch }: SearchResult
     setCurrentIndex((prev) => (prev - 1 + profiles.length) % profiles.length);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    didSwipe.current = false;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+
+    // Ignore taps and vertical scrolling; only a clear horizontal drag counts.
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(dy)) return;
+
+    didSwipe.current = true;
+    if (dx > 0) {
+      handleNext();
+    } else {
+      handlePrevious();
+    }
+  };
+
   const navigateToProfile = (profileId: string) => {
+    // A swipe ends with a click on the card, which would otherwise open the
+    // profile every time someone browses.
+    if (didSwipe.current) {
+      didSwipe.current = false;
+      return;
+    }
     navigate(`/profile/${profileId}`, { 
       state: { fromSearch: true }
     });
@@ -72,11 +109,13 @@ export const SearchResultsCarousel = ({ profiles, onChangeSearch }: SearchResult
         onChangeSearch={onChangeSearch}
       />
 
-      <ProfileCard 
-        profile={currentProfile}
-        hasUserLocation={hasUserLocation}
-        onCardClick={navigateToProfile}
-      />
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <ProfileCard 
+          profile={currentProfile}
+          hasUserLocation={hasUserLocation}
+          onCardClick={navigateToProfile}
+        />
+      </div>
 
       <PageIndicator 
         total={profiles.length}

@@ -124,7 +124,7 @@ const Header = () => {
           {/* Tagline. Hidden below lg: at logo size it does not fit beside the
               logo on phones and would push the account menu off screen. */}
           <span className="hidden lg:inline text-xl font-bold font-display tracking-tight whitespace-nowrap">
-            <span className="text-gradient-pink">the number one</span>{' '}
+            <span className="text-gradient-pink">The number 1</span>{' '}
             <span className="text-white">shemale dating site</span>
           </span>
         </button>

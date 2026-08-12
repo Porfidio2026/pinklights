@@ -50,6 +50,7 @@ const AdminBulkImport = React.lazy(() => import('./pages/admin/AdminBulkImport')
 const AdminCreateProfile = React.lazy(() => import('./pages/admin/AdminCreateProfile'));
 const AdminInvoices = React.lazy(() => import('./pages/admin/AdminInvoices'));
 const MyInvoices = React.lazy(() => import('./pages/MyInvoices'));
+const AuthConfirm = React.lazy(() => import('./pages/AuthConfirm'));
 
 // SEO pages — cities
 const FindHub = React.lazy(() => import('./pages/seo/FindHub'));
@@ -164,6 +165,7 @@ function App() {
                 <Route path="/set-availabilities" element={<RequireAuth><SetAvailabilities /></RequireAuth>} />
                 <Route path="/address" element={<RequireAuth><Address /></RequireAuth>} />
                 <Route path="/buy-credits" element={<RequireAuth><BuyDayCredits /></RequireAuth>} />
+                <Route path="/auth/confirm" element={<AuthConfirm />} />
                 <Route path="/payment-success" element={<RequireAuth><PaymentSuccess /></RequireAuth>} />
                 <Route path="/invoices" element={<RequireAuth><MyInvoices /></RequireAuth>} />
 

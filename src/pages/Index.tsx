@@ -5,9 +5,19 @@ import ServiceSelection, { ServiceType } from '@/components/index/ServiceSelecti
 import GenderSelection, { GenderType } from '@/components/index/GenderSelection';
 import MainSearch from '@/components/index/MainSearch';
 
-const stepLabels = ['Service', 'Preference', 'Browse'];
+/**
+ * The gender step is skipped while the strategy focuses on trans dating: with
+ * Female hidden it would be a single-choice screen. GenderSelection and its
+ * route are left intact — set this to false to bring the step back.
+ */
+const SKIP_GENDER_STEP = true;
+const DEFAULT_GENDER: GenderType = 'Trans';
 
-const StepIndicator = ({ currentStep }: { currentStep: 1 | 2 | 3 }) => (
+const stepLabels = SKIP_GENDER_STEP
+  ? ['Service', 'Browse']
+  : ['Service', 'Preference', 'Browse'];
+
+const StepIndicator = ({ currentStep }: { currentStep: number }) => (
   <div className="fixed top-16 left-0 right-0 z-40 flex justify-center py-3 pointer-events-none">
     <div className="flex items-center gap-2">
       {stepLabels.map((label, index) => {
@@ -46,7 +56,9 @@ const Index = () => {
     const urlParams = new URLSearchParams(location.search);
     const stepParam = urlParams.get('step');
     if (stepParam && ['1', '2', '3'].includes(stepParam)) {
-      return parseInt(stepParam) as 1 | 2 | 3;
+      const parsed = parseInt(stepParam) as 1 | 2 | 3;
+      // ?step=2 would render nothing while the gender step is skipped.
+      return SKIP_GENDER_STEP && parsed === 2 ? 3 : parsed;
     }
     return location.state?.startAtStep === 3 ? 3 : 1;
   });
@@ -63,6 +75,18 @@ const Index = () => {
 
   const [profilesError, setProfilesError] = useState<boolean>(false);
 
+  // Choosing a service goes straight to browsing while the gender step is
+  // skipped, recording the implied preference so MainSearch filters as before.
+  const handleServiceChosen = () => {
+    if (SKIP_GENDER_STEP) {
+      setSelectedGender(DEFAULT_GENDER);
+      localStorage.setItem('selectedGender', DEFAULT_GENDER as string);
+      setStep(3);
+      return;
+    }
+    setStep(2);
+  };
+
   // Update URL when step changes
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -78,10 +102,10 @@ const Index = () => {
       {step === 1 && (
         <ServiceSelection
           setSelectedService={setSelectedService}
-          setStep={setStep as (step: 2) => void}
+          setStep={handleServiceChosen as (step: 2) => void}
         />
       )}
-      {step === 2 && (
+      {step === 2 && !SKIP_GENDER_STEP && (
         <GenderSelection
           setSelectedGender={setSelectedGender}
           setProfilesError={setProfilesError}

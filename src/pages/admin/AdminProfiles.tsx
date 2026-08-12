@@ -154,7 +154,13 @@ const AdminProfiles = () => {
         body: { profileId: profile.id },
       });
 
-      if (error) throw error;
+      // On a non-2xx the client only says "Edge Function returned a non-2xx
+      // status code" and drops the body, which hides the actual reason. Read it
+      // off the attached Response so the admin sees something actionable.
+      if (error) {
+        const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+        throw new Error(body?.error ? `${body.error}${body.details ? `: ${body.details}` : ''}` : error.message);
+      }
       if (data?.error) throw new Error(data.error);
 
       const phone = profile.phone_number.replace(/[^0-9+]/g, '');
@@ -166,11 +172,11 @@ const AdminProfiles = () => {
 
       queryClient.invalidateQueries({ queryKey: ['admin-profiles'] });
       toast({ title: 'Magic link generated', description: 'WhatsApp opened with the invite link' });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to generate magic link:', err);
       toast({
         title: 'Failed to send invite',
-        description: err.message || 'Could not generate magic link',
+        description: err instanceof Error ? err.message : 'Could not generate magic link',
         variant: 'destructive',
       });
     } finally {
