@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { Lock, Phone, Heart, Sparkles } from 'lucide-react';
+import { RelatedProfiles } from '@/components/RelatedProfiles';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export type ServiceType = 'private' | 'outcall' | 'soft' | 'ropes' | null;
 
@@ -8,6 +10,12 @@ interface ServiceSelectionProps {
   setSelectedService: (service: ServiceType) => void;
   setStep: (step: 2) => void;
 }
+
+/**
+ * Temporarily hidden while the strategy focuses on trans dating. These are not
+ * deleted: remove a value from this list to bring the option back.
+ */
+const HIDDEN_SERVICES: ServiceType[] = ['soft', 'ropes'];
 
 const services = [
   {
@@ -63,7 +71,7 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ setSelectedService,
 
         {/* Service cards */}
         <div className="grid grid-cols-1 gap-3">
-          {services.map((service, index) => {
+          {services.filter((s) => !HIDDEN_SERVICES.includes(s.value)).map((service, index) => {
             const Icon = service.icon;
             const isDisabled = service.value === 'soft' || service.value === 'ropes';
             const isHovered = !isDisabled && hoveredIndex === index;
@@ -132,6 +140,21 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ setSelectedService,
           })}
         </div>
       </div>
+
+      {/* Suggested profiles — same list as under the search results, but with no
+          service or gender filter yet, since nothing has been chosen at step 1. */}
+      <section className="relative z-10 w-full max-w-5xl mt-16 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+          <h2 className="text-sm font-semibold font-display text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+            Suggested Profiles
+          </h2>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+        </div>
+        <ErrorBoundary fallback={null}>
+          <RelatedProfiles linkToProfiles />
+        </ErrorBoundary>
+      </section>
     </div>
   );
 };

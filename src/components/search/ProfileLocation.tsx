@@ -22,7 +22,13 @@ export const ProfileLocation: React.FC<ProfileLocationProps> = ({
   // Determine what location info to show - check for actual numeric values
   const showDistance = hasUserLocation && typeof distance_km === 'number' && distance_km > 0;
   const showDriveTime = hasUserLocation && typeof drive_minutes === 'number' && drive_minutes > 0;
-  const showCity = !hasUserLocation || (!showDistance && !showDriveTime);
+  // City is always shown on tiles; distance/drive time are added on top when a
+  // location has been shared, rather than replacing the city. Suppressed when
+  // the profile has no usable location, so no empty pin is rendered.
+  // extractCity returns an "Unknown location" placeholder rather than an empty
+  // string, so gate on the raw location instead of the formatted result.
+  const cityName = extractCity(location);
+  const showCity = Boolean(location);
 
   // For profile card display (compact variant)
   if (variant === 'compact') {
@@ -45,7 +51,7 @@ export const ProfileLocation: React.FC<ProfileLocationProps> = ({
         {showCity && (
           <div className="flex items-center text-sm text-muted-foreground gap-1">
             <MapPin className="h-3 w-3" />
-            <span className="truncate">{extractCity(location)}</span>
+            <span className="truncate">{cityName}</span>
           </div>
         )}
       </div>

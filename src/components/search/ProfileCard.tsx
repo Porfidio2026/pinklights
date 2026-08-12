@@ -78,10 +78,6 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
           )}
         </div>
 
-        <p className={`text-sm font-medium ${availability.color}`}>
-          {availability.text}
-        </p>
-
         {/* Location info */}
         <div className="flex items-center gap-4 text-white/70 text-sm">
           {showDistance && (
@@ -96,7 +92,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
               <span>{profile.drive_minutes} min</span>
             </div>
           )}
-          {!showDistance && !showDriveTime && cityName && (
+          {cityName && (
             <div className="flex items-center gap-1">
               <MapPin className="h-4 w-4" />
               <span>{cityName}</span>

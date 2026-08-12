@@ -3,7 +3,6 @@ import React from 'react';
 import { Card, CardContent } from '../ui/card';
 import { ProfilePictures } from '../profile/ProfilePictures';
 import { Profile } from './types';
-import { getAvailabilityStatusDisplay } from './utils';
 import { ProfileLocation } from '../search/ProfileLocation';
 
 interface ProfileCardProps {
@@ -12,7 +11,6 @@ interface ProfileCardProps {
 }
 
 export const ProfileCard: React.FC<ProfileCardProps> = ({ profile, hasUserLocation }) => {
-  const availability = getAvailabilityStatusDisplay(profile.availability_status);
   const defaultPicture = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=60';
   
   // Determine if we actually have distance data for this profile
@@ -46,10 +44,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ profile, hasUserLocati
               {profile.age && <span className="text-sm text-muted-foreground">{profile.age}</span>}
             </div>
             
-            <p className={`text-sm ${availability.color}`}>
-              {availability.text}
-            </p>
-            
+            {/* Availability intentionally not shown on tiles. To restore it,
+                re-import getAvailabilityStatusDisplay from './utils'. */}
+
             {/* Location Information */}
             <ProfileLocation
               hasUserLocation={hasDistanceData || hasDriveTimeData}

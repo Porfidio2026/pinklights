@@ -9,6 +9,12 @@ interface GenderSelectionProps {
   setStep: (step: 3) => void;
 }
 
+/**
+ * Temporarily hidden while the strategy focuses on trans dating. Not deleted:
+ * remove a value from this list to bring the option back.
+ */
+const HIDDEN_GENDERS: GenderType[] = ['Female'];
+
 const genders = [
   {
     label: 'Female',
@@ -56,7 +62,7 @@ const GenderSelection: React.FC<GenderSelectionProps> = ({
 
         {/* Gender cards */}
         <div className="flex gap-5 justify-center">
-          {genders.map((gender, index) => {
+          {genders.filter((g) => !HIDDEN_GENDERS.includes(g.value)).map((gender, index) => {
             const isDisabled = gender.value === 'Female';
             const isHovered = !isDisabled && hoveredIndex === index;
             return (

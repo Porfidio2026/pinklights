@@ -121,6 +121,12 @@ const Header = () => {
           <span className="text-xl font-bold font-display tracking-tight">
             <span className="text-gradient-pink">Pink</span><span className="text-foreground">lights</span><span className="text-white text-[0.9em]">.be</span>
           </span>
+          {/* Tagline. Hidden below lg: at logo size it does not fit beside the
+              logo on phones and would push the account menu off screen. */}
+          <span className="hidden lg:inline text-xl font-bold font-display tracking-tight whitespace-nowrap">
+            <span className="text-gradient-pink">the number one</span>{' '}
+            <span className="text-white">shemale dating site</span>
+          </span>
         </button>
 
         <div className="flex items-center gap-4">
