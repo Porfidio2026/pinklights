@@ -55,16 +55,26 @@ Already stored:
 - `ACATHA_PROD_HACIENDA_URL` = `https://sv.acatha.io:3000` (no `/md-sv` suffix)
 - `ACATHA_PROD_CLIENT_ID`, `ACATHA_PROD_SECRET_KEY`
 
-Still needed from Acatha before anything can be validated:
-- [ ] **Production user and password.** `cognito/login` needs an account; only a
-      client-id/secret-key pair was supplied, and the endpoint answers
-      `{"error":false,"message":"Login failed"}` with the dev account.
-      → `ACATHA_PROD_USER`, `ACATHA_PROD_PASSWORD`
+Also stored (2026-08-13), but **not yet working**:
+- `ACATHA_PROD_USER` = `svasquez@mennonites.io`
+- `ACATHA_PROD_PASSWORD`
+
+Still blocked from Acatha:
+- [ ] **The production account cannot log in.** `cognito/login` returns
+      `{"error":false,"message":"Login failed"}`. The client-id/secret-key pair
+      is accepted (the same keys against dev return a 401, so key validation is
+      passing) — it is the user/password that Cognito rejects. The API returns
+      the identical message for a deliberately wrong password, so there is no
+      way to tell from outside whether the password is wrong or the account is
+      unusable. Most likely the account was admin-created and still needs its
+      first password set, which Cognito reports as a challenge rather than a
+      token. Ask them to confirm the account is active and the password is
+      permanent, or to log in once through their portal to clear it.
+      Do not retry repeatedly: Cognito locks accounts after repeated failures.
 - [ ] **`cliente.ref` (company UUID)** for MENNONITES → `ACATHA_PROD_COMPANY_UUID`
 - [ ] An item code from the production catalog → `ACATHA_PROD_ITEM_CODE`
       (listable ourselves once login works)
-- [ ] **Confirm MENNONITES is the correct issuing entity.** The credentials are
-      "para la empresa MENNONITES", which is not Pinklights.
+- [x] MENNONITES confirmed as the issuing entity (2026-08-13).
 - [ ] Ask them to rotate the secret key: it arrived in plain text.
 
 Notes discovered while validating:
