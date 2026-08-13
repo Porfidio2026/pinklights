@@ -12,8 +12,8 @@ import { acathaLogin } from '../_shared/acatha.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const apiUrl = (path: string) =>
-  `${Deno.env.get('ACATHA_BASE_URL')}/amfphp/Services/SIGNUM/API/v4${path}`;
+const API_PATH = Deno.env.get('ACATHA_API_PATH') || '/amfphp/Services/SIGNUM/API/v4';
+const apiUrl = (path: string) => `${Deno.env.get('ACATHA_BASE_URL')}${API_PATH}${path}`;
 
 Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -63,6 +63,45 @@ Deno.serve(async (req) => {
         out[`tipo=${t}`] = (await res.text()).slice(0, 500);
       }
       return Response.json({ session, out });
+    }
+
+    if (action === 'probeAuth') {
+      // Run the full auth chain against an arbitrary host with arbitrary
+      // client-id/secret-key, without touching stored secrets or the cached
+      // session. Used to validate production credentials before switching over.
+      const base = body.baseUrl || Deno.env.get('ACATHA_BASE_URL');
+      const apiPath = body.apiPath || API_PATH;
+      const url = (path: string) => `${base}${apiPath}${path}`;
+      const h = {
+        'client-id': body.clientId || Deno.env.get('ACATHA_CLIENT_ID'),
+        'secret-key': body.secretKey || Deno.env.get('ACATHA_SECRET_KEY'),
+        'Content-Type': 'application/json',
+      };
+      const steps: Record<string, unknown> = { base, clientId: h['client-id'] };
+
+      const loginRes = await fetch(url('/cognito/login'), {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ AuthParameters: {
+          user: body.user || Deno.env.get('ACATHA_USER'),
+          pass: body.pass || Deno.env.get('ACATHA_PASSWORD'),
+        } }),
+      });
+      const loginData = await loginRes.json();
+      const idToken = loginData.auto?.token?.AuthenticationResult?.IdToken;
+      steps.cognitoLogin = idToken ? 'OK' : (loginData.message || JSON.stringify(loginData).slice(0, 300));
+      if (!idToken) return Response.json({ steps }, { status: 502 });
+
+      const authRes = await fetch(url('/login/autenticar'), {
+        method: 'POST', headers: { ...h, 'x-csrf-token': idToken },
+      });
+      const authData = await authRes.json();
+      steps.autenticar = authData.error ? (authData.message || 'error') : 'OK';
+      steps.empresas = (authData.auto?.empresas ?? []).map((e: Record<string, unknown>) => ({
+        codigo: e.codigo, ruc: e.ruc, nrc: e.nrc,
+        nombre: e.nombre, comercial: e.comercial,
+        locales: (e.locales ?? []).map((l: Record<string, unknown>) => ({ codigo: l.codigo, nombre: l.nombre })),
+      }));
+      return Response.json({ steps });
     }
 
     if (action === 'ventas') {

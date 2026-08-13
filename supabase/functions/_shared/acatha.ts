@@ -151,9 +151,16 @@ export interface AcathaSession {
 
 // ── Internal helpers ─────────────────────────────────────────────────
 
+/**
+ * The API path segment is case-sensitive and differs per environment:
+ * dev.acatha.com serves /amfphp/Services/... (capital S) and sv.acatha.io
+ * serves /amfphp/services/... (lowercase). The wrong casing returns an HTML
+ * 404 rather than a JSON error, so it fails in a confusing way.
+ */
 function acathaUrl(path: string): string {
-  const base = env('ACATHA_BASE_URL'); // https://dev.acatha.com
-  return `${base}/amfphp/Services/SIGNUM/API/v4${path}`;
+  const base = env('ACATHA_BASE_URL'); // https://dev.acatha.com | https://sv.acatha.io
+  const apiPath = optEnv('ACATHA_API_PATH', '/amfphp/Services/SIGNUM/API/v4');
+  return `${base}${apiPath}${path}`;
 }
 
 function haciendaUrl(path: string): string {
