@@ -45,11 +45,38 @@ Everything below is what still stands between that and real emission.
 
 ## 2. Credentials and endpoints (their steps 4–5)
 
-- [ ] Obtain production API credentials.
-- [ ] Point at production hosts:
-      - `ACATHA_BASE_URL` → `https://sv.acatha.io`
-      - `ACATHA_HACIENDA_URL` → `https://sv.acatha.io:3000`
-- [ ] Confirm `ACATHA_COMPANY_UUID` for the production company.
+Acatha sent production access on 2026-08-13 for the company **MENNONITES**.
+Stored as `ACATHA_PROD_*` secrets so dev stays intact; set `ACATHA_ENV=prod`
+to switch. Any `ACATHA_PROD_*` that is unset falls back to its `ACATHA_*` twin.
+
+Already stored:
+- `ACATHA_PROD_BASE_URL` = `https://sv.acatha.io`
+- `ACATHA_PROD_API_PATH` = `/amfphp/services/SIGNUM/API/v4` (lowercase — see below)
+- `ACATHA_PROD_HACIENDA_URL` = `https://sv.acatha.io:3000` (no `/md-sv` suffix)
+- `ACATHA_PROD_CLIENT_ID`, `ACATHA_PROD_SECRET_KEY`
+
+Still needed from Acatha before anything can be validated:
+- [ ] **Production user and password.** `cognito/login` needs an account; only a
+      client-id/secret-key pair was supplied, and the endpoint answers
+      `{"error":false,"message":"Login failed"}` with the dev account.
+      → `ACATHA_PROD_USER`, `ACATHA_PROD_PASSWORD`
+- [ ] **`cliente.ref` (company UUID)** for MENNONITES → `ACATHA_PROD_COMPANY_UUID`
+- [ ] An item code from the production catalog → `ACATHA_PROD_ITEM_CODE`
+      (listable ourselves once login works)
+- [ ] **Confirm MENNONITES is the correct issuing entity.** The credentials are
+      "para la empresa MENNONITES", which is not Pinklights.
+- [ ] Ask them to rotate the secret key: it arrived in plain text.
+
+Notes discovered while validating:
+- The API path is **case-sensitive and inverted** between environments:
+  dev serves `/amfphp/Services/...`, production `/amfphp/services/...`. The
+  wrong casing returns an HTML 404, surfacing as `Unexpected token '<'`.
+- `sv.acatha.io:3000` serves a complete 4-certificate chain and verifies
+  cleanly, so `ACATHA_CA_CERT` is a dev-only workaround and must be unset
+  (or simply left absent from the `ACATHA_PROD_*` set) in production.
+- Hacienda production is a **later** step: their mail says they proceed with
+  "paso a producción ante Hacienda" only after this API validation. Keep
+  `ACATHA_AMBIENTE=00` until they confirm.
 
 ## 3. Secrets to change
 

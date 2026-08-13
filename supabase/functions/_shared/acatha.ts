@@ -21,16 +21,38 @@
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
 // ── Environment ──────────────────────────────────────────────────────
+
+/**
+ * Which Acatha credential set to use: 'dev' (default) or 'prod'.
+ *
+ * Production values live under ACATHA_PROD_*, so both environments coexist and
+ * switching is a single variable rather than overwriting credentials in place.
+ * Supabase secrets are write-only, so an in-place swap could not be undone
+ * without asking Acatha to reissue the other set.
+ *
+ * Any ACATHA_PROD_* value that is not set falls back to its ACATHA_* twin, so
+ * only the variables that genuinely differ need duplicating.
+ */
+const ACATHA_ENV = Deno.env.get('ACATHA_ENV') || 'dev';
+
+function readVar(key: string): string | undefined {
+  if (ACATHA_ENV === 'prod' && key.startsWith('ACATHA_')) {
+    const prod = Deno.env.get(`ACATHA_PROD_${key.slice('ACATHA_'.length)}`);
+    if (prod) return prod;
+  }
+  return Deno.env.get(key);
+}
+
 const env = (key: string): string => {
-  const v = Deno.env.get(key);
-  if (!v) throw new Error(`Missing env var: ${key}`);
+  const v = readVar(key);
+  if (!v) throw new Error(`Missing env var: ${key} (ACATHA_ENV=${ACATHA_ENV})`);
   return v;
 };
 
 // Optional counterpart to env(). Note that `env(key) || fallback` does NOT work
 // as a default: env() throws before the || is ever evaluated.
 const optEnv = (key: string, fallback: string): string =>
-  Deno.env.get(key) || fallback;
+  readVar(key) || fallback;
 
 /**
  * Optional HTTP client carrying an extra CA certificate.
