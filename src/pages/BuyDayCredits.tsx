@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useCredits } from '@/hooks/useCredits';
 import { supabase } from '@/lib/supabase';
-import { Zap, Clock, Sparkles, Crown, Loader2 } from 'lucide-react';
+import { Zap, Clock, Sparkles, Crown, Loader2, FileText, Download, ChevronRight } from 'lucide-react';
+import { useInvoices } from '@/hooks/useInvoices';
 
 interface CreditPackage {
   id: string;
@@ -33,6 +34,8 @@ const BuyDayCredits = () => {
   const { toast } = useToast();
   const { balance, isLoading, isLive, isExempt, visibilityExpiresAt, activateDayCredit } = useCredits();
   const [purchasingPackage, setPurchasingPackage] = useState<string | null>(null);
+
+  const { invoices, isLoading: invoicesLoading } = useInvoices();
 
   const { data: packages = [], isLoading: packagesLoading } = useQuery({
     queryKey: ['credit-packages'],
@@ -205,6 +208,67 @@ const BuyDayCredits = () => {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Invoices — surfaced here because this is where people look for
+            receipts, rather than only under the account menu. */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-xl font-bold">Invoices</h3>
+            {invoices.length > 3 && (
+              <button
+                onClick={() => navigate('/invoices')}
+                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                View all <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            A receipt is issued automatically for every purchase
+          </p>
+
+          {invoicesLoading ? (
+            <div className="glass-card p-5 h-[76px] animate-pulse" />
+          ) : invoices.length === 0 ? (
+            <div className="glass-card p-5 text-sm text-muted-foreground">
+              No invoices yet. They appear here after your first purchase.
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {invoices.slice(0, 3).map((invoice) => (
+                <div key={invoice.id} className="glass-card p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-pink-100 flex items-center justify-center shrink-0">
+                      <FileText className="h-5 w-5 text-pink" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{invoice.description || 'Pinklights'}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {new Date(invoice.created_at).toLocaleDateString()}
+                        {invoice.dte_number ? ` · ${invoice.dte_number}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-semibold">
+                      {formatPrice(invoice.amount_cents, invoice.currency)}
+                    </span>
+                    {invoice.pdf_url && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Download invoice"
+                        onClick={() => window.open(invoice.pdf_url!, '_blank', 'noopener,noreferrer')}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Back to Dashboard */}

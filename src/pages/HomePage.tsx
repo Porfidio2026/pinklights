@@ -11,6 +11,7 @@ import {
   Clock,
   MapPin,
   CreditCard,
+  FileText,
   Settings
 } from 'lucide-react';
 import {
@@ -102,6 +103,7 @@ const HomePage = () => {
     { icon: Clock, text: 'Set Availability', path: '/set-availabilities' },
     { icon: MapPin, text: 'Change Address', path: '/address' },
     { icon: CreditCard, text: 'Payment & Visibility', path: '/buy-credits' },
+    { icon: FileText, text: 'Invoices', path: '/invoices' },
     { icon: Settings, text: 'Account Settings', path: '/account-settings' },
   ];
 
