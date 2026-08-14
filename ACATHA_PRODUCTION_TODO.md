@@ -11,6 +11,28 @@ Everything below is what still stands between that and real emission.
 
 ---
 
+## 0. Current blocker (2026-08-14)
+
+Hacienda rejects every submission from the MENNONITES production company with
+`codigoMsg 106 CREDENCIALES INVÁLIDAS`, in **both** ambiente `00` and `01`.
+Since it fails identically either way, this is not the ambiente: it is the
+company's own Hacienda credentials at Acatha.
+
+Everything on our side is validated against production:
+- the sale is created (`ventas/sv/ingresar` → Registro Satisfactorio)
+- the DTE is well-formed and reaches Hacienda
+- the PDF is generated and retrievable
+- emisor, item, totals and totalLetras are all correct
+
+Their original mail said they would proceed with the "paso a producción ante
+Hacienda" *after* this validation, so that step is most likely still pending.
+Worth noting the company object returns `tipoAmbiente: 0`, and carries a
+certificate expiring 2031-07-16, so a certificate exists but the environment
+flag on their side says pruebas.
+
+Ask: are MENNONITES' Hacienda credentials loaded and active, and for which
+ambiente? Nothing else is outstanding.
+
 ## 1. Ask Acatha
 
 - [ ] **Fix the TLS chain on `dev.acatha.com:3000`.** It serves only its leaf
@@ -119,7 +141,7 @@ Notes discovered while validating:
 
 | Secret | Dev value now | Production action |
 |---|---|---|
-| `ACATHA_AMBIENTE` | unset → defaults `00` (pruebas) | **set to `01`** — nothing is legally emitted until this changes |
+| `ACATHA_PROD_AMBIENTE` | `01` (set 2026-08-14) | already production |
 | `ACATHA_CA_CERT` | Sectigo intermediate PEM | **unset** — dev workaround only, prod chain is complete |
 | `ACATHA_EMISOR_TELEFONO` | `2222-2222` (placeholder) | **real registered phone**, min 8 chars |
 | `ACATHA_ITEM_CODE` | `0001` (their demo item) | real Pinklights item code |
