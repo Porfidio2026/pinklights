@@ -380,6 +380,12 @@ interface DTERequest {
   customerEmail: string;
   items: DTEItem[];
   totalAmount: number;
+  /**
+   * Acatha catalog code (`barras`) for the line item. Each package has its own
+   * item in production, so this comes from credit_packages rather than a single
+   * global secret. Falls back to ACATHA_ITEM_CODE when absent.
+   */
+  itemCode?: string;
 }
 
 /**
@@ -431,7 +437,7 @@ export async function createDTE(
     const consumer = getGenericConsumer();
 
     // Use a test item code that exists in Acatha inventory
-    const itemCode = optEnv('ACATHA_ITEM_CODE', '000006');
+    const itemCode = request.itemCode || optEnv('ACATHA_ITEM_CODE', '000006');
 
     // ── Step 1: Create sale in Acatha ──
     const saleBody = {

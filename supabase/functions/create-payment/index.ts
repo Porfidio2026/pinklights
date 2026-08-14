@@ -9,12 +9,10 @@ const DITOBANX_MERCHANT_KEY = Deno.env.get('DITOBANX_MERCHANT_KEY')!;
 const DITOBANX_MERCHANT_PASSWORD = Deno.env.get('DITOBANX_MERCHANT_PASSWORD')!;
 const SITE_URL = Deno.env.get('SITE_URL') || 'http://localhost:8080';
 
-// Package definitions (placeholder prices — adjust as needed)
-const PACKAGES: Record<string, { days: number; amount: string; description: string }> = {
-  '1day':  { days: 1,  amount: '5.00',  description: 'Pinklights - 1 Day Visibility' },
-  '7day':  { days: 7,  amount: '25.00', description: 'Pinklights - 7 Days Visibility' },
-  '30day': { days: 30, amount: '75.00', description: 'Pinklights - 30 Days Visibility' },
-};
+// Packages come from public.credit_packages so a price change takes effect
+// immediately. They used to be hardcoded here and again in BuyDayCredits.tsx,
+// which meant editing two files and redeploying, with nothing keeping the two
+// in step.
 
 /**
  * DitoBanx rejects customer.name unless it is at least two whitespace-separated
@@ -91,18 +89,30 @@ Deno.serve(async (req) => {
 
     // Parse and validate request
     const { packageId } = await req.json() as { packageId: string };
-    const pkg = PACKAGES[packageId];
 
-    if (!pkg) {
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: pkgRow } = await supabaseAdmin
+      .from('credit_packages')
+      .select('id, days, amount_cents, currency, invoice_description')
+      .eq('id', packageId)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (!pkgRow) {
       return new Response(
-        JSON.stringify({ error: 'Invalid package. Use: 1day, 7day, or 30day' }),
+        JSON.stringify({ error: `Unknown or inactive package: ${packageId}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const pkg = {
+      days: pkgRow.days,
+      amount: (pkgRow.amount_cents / 100).toFixed(2),
+      description: `Pinklights - ${pkgRow.invoice_description}`,
+    };
+
     // Prefer the profile's real name; user_metadata.full_name is unset on every
     // account today, so the old email-prefix fallback was what DitoBanx rejected.
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: profileRow } = await supabaseAdmin
       .from('profiles')
       .select('full_name')
@@ -116,7 +126,7 @@ Deno.serve(async (req) => {
     );
 
     const orderNumber = generateOrderNumber();
-    const currency = 'USD';
+    const currency = pkgRow.currency || 'USD';
 
     // Compute DitoBanx signature
     const hash = await computeHash(
@@ -162,12 +172,12 @@ Deno.serve(async (req) => {
     }
 
     // Record payment session in database (service role bypasses RLS)
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseAdmin
       .from('payment_sessions')
       .insert({
         user_id: user.id,
         order_number: orderNumber,
+        package_id: pkgRow.id,
         day_credits: pkg.days,
         amount_cents: Math.round(parseFloat(pkg.amount) * 100),
         currency: currency,

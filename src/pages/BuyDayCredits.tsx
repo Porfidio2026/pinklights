@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -6,17 +7,45 @@ import { useCredits } from '@/hooks/useCredits';
 import { supabase } from '@/lib/supabase';
 import { Zap, Clock, Sparkles, Crown, Loader2 } from 'lucide-react';
 
-const PACKAGES = [
-  { id: '1day', days: 1, price: '$5', label: '1 Day', description: 'Try it out' },
-  { id: '7day', days: 7, price: '$25', label: '7 Days', description: 'Most popular', featured: true },
-  { id: '30day', days: 30, price: '$75', label: '30 Days', description: 'Best value' },
-];
+interface CreditPackage {
+  id: string;
+  label: string;
+  description: string;
+  days: number;
+  amount_cents: number;
+  currency: string;
+  featured: boolean;
+}
+
+/**
+ * Prices live in public.credit_packages, not in this file. create-payment reads
+ * the same table when it charges, so a price change takes effect immediately in
+ * both places and the two cannot drift apart.
+ */
+const formatPrice = (cents: number, currency: string) =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency', currency,
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  }).format(cents / 100);
 
 const BuyDayCredits = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { balance, isLoading, isLive, isExempt, visibilityExpiresAt, activateDayCredit } = useCredits();
   const [purchasingPackage, setPurchasingPackage] = useState<string | null>(null);
+
+  const { data: packages = [], isLoading: packagesLoading } = useQuery({
+    queryKey: ['credit-packages'],
+    queryFn: async (): Promise<CreditPackage[]> => {
+      const { data, error } = await supabase
+        .from('credit_packages')
+        .select('id, label, description, days, amount_cents, currency, featured')
+        .eq('active', true)
+        .order('sort_order');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const handlePurchase = async (packageId: string) => {
     setPurchasingPackage(packageId);
@@ -32,10 +61,10 @@ const BuyDayCredits = () => {
       } else {
         throw new Error('No checkout URL returned');
       }
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: 'Payment Error',
-        description: err.message || 'Failed to create payment session. Please try again.',
+        description: err instanceof Error ? err.message : 'Failed to create payment session. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -130,7 +159,17 @@ const BuyDayCredits = () => {
           </p>
 
           <div className="grid gap-4">
-            {PACKAGES.map((pkg) => (
+            {packagesLoading && (
+              [1, 2, 3].map((i) => (
+                <div key={i} className="glass-card p-5 h-[88px] animate-pulse" />
+              ))
+            )}
+            {!packagesLoading && packages.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No packages are available right now. Please try again later.
+              </p>
+            )}
+            {packages.map((pkg) => (
               <button
                 key={pkg.id}
                 onClick={() => handlePurchase(pkg.id)}
@@ -158,7 +197,9 @@ const BuyDayCredits = () => {
                   {purchasingPackage === pkg.id ? (
                     <Loader2 className="h-5 w-5 animate-spin text-pink" />
                   ) : (
-                    <span className="text-xl font-bold text-gradient-pink">{pkg.price}</span>
+                    <span className="text-xl font-bold text-gradient-pink">
+                      {formatPrice(pkg.amount_cents, pkg.currency)}
+                    </span>
                   )}
                 </div>
               </button>

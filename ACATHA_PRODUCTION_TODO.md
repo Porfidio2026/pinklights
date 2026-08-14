@@ -75,12 +75,11 @@ so it does not need to be asked for:
 no secrets are needed for them.
 
 Still blocked:
-- [ ] **The production catalog is empty (0 items).** A Pinklights product must be
-      created via `POST /inventario/items/save` before any sale can be made.
-      Valid values discovered for this company: `unidadv: 34` (UNIDAD),
-      `grupo: 0` (the only group, "N/A"). `/inventario/lineas/listar` returns
-      nothing, so `linea` needs confirming with Acatha.
-      → then set `ACATHA_PROD_ITEM_CODE` to the item's `barras`
+- [x] Production catalog seeded (2026-08-14). Three service items created:
+      `PL-1DAY` "1 Day Access", `PL-7DAY` "7 Days Access", `PL-30DAY`
+      "30 Days Access" — all tipo Servicio, unidad UNIDAD, IVA code 3.
+      Codes live in `credit_packages.acatha_item_code`, not a secret, so each
+      package invoices against its own catalog item.
 - [ ] **`cliente.ref` (company UUID)** for MENNONITES → `ACATHA_PROD_COMPANY_UUID`.
       Sent on every Hacienda submission; not present in the login response.
 - [ ] **`codActividad` + exact `descActividad`** registered for MENNONITES.

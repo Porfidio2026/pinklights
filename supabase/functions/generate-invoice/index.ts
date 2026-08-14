@@ -66,9 +66,20 @@ Deno.serve(async (req) => {
     const userEmail = user?.email || '';
     const customerName = profile?.full_name || userEmail.split('@')[0] || 'Customer';
 
-    // Build description
+    // Name the product from credit_packages so the DTE matches what was sold and
+    // references the right Acatha catalog item. Older sessions predate package_id,
+    // so fall back to describing it from the credit count.
     const dayCredits = session.day_credits || 1;
-    const description = `Pinklights - ${dayCredits} day credit${dayCredits > 1 ? 's' : ''} visibility package`;
+    const { data: pkg } = session.package_id
+      ? await supabase
+          .from('credit_packages')
+          .select('invoice_description, acatha_item_code')
+          .eq('id', session.package_id)
+          .maybeSingle()
+      : { data: null };
+
+    const description = pkg?.invoice_description
+      ?? `Pinklights - ${dayCredits} day credit${dayCredits > 1 ? 's' : ''} visibility package`;
 
     // Create or update invoice row as 'processing'
     let invoiceId: string;
@@ -132,6 +143,7 @@ Deno.serve(async (req) => {
           customerEmail: userEmail,
           items: [{ description, quantity: 1, unitPrice: amountDollars, totalPrice: amountDollars }],
           totalAmount: amountDollars,
+          itemCode: pkg?.acatha_item_code ?? undefined,
         });
 
         if (dteResult.ok) {
