@@ -71,6 +71,16 @@ Still blocked from Acatha:
       token. Ask them to confirm the account is active and the password is
       permanent, or to log in once through their portal to clear it.
       Do not retry repeatedly: Cognito locks accounts after repeated failures.
+
+      Combinations already tried against
+      `https://sv.acatha.io/amfphp/services/SIGNUM/API/v4/cognito/login`,
+      all returning `{"error":false,"message":"Login failed"}`:
+        - svasquez@mennonites.io / Mennonites123#
+        - svasquez@mennonites.io / Menonas4$$
+        - s.vasquez@mennonites.io / Menonas4$$
+        - s.vasquez / Menonas4$$
+      A deliberately wrong password returns the same message, so the response
+      carries no signal. Stop guessing and get confirmation from Acatha.
 - [ ] **`cliente.ref` (company UUID)** for MENNONITES → `ACATHA_PROD_COMPANY_UUID`
 - [ ] An item code from the production catalog → `ACATHA_PROD_ITEM_CODE`
       (listable ourselves once login works)
