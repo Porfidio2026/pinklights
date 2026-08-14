@@ -59,32 +59,36 @@ Also stored (2026-08-13), but **not yet working**:
 - `ACATHA_PROD_USER` = `svasquez@mennonites.io`
 - `ACATHA_PROD_PASSWORD`
 
-Still blocked from Acatha:
-- [ ] **The production account cannot log in.** `cognito/login` returns
-      `{"error":false,"message":"Login failed"}`. The client-id/secret-key pair
-      is accepted (the same keys against dev return a 401, so key validation is
-      passing) — it is the user/password that Cognito rejects. The API returns
-      the identical message for a deliberately wrong password, so there is no
-      way to tell from outside whether the password is wrong or the account is
-      unusable. Most likely the account was admin-created and still needs its
-      first password set, which Cognito reports as a challenge rather than a
-      token. Ask them to confirm the account is active and the password is
-      permanent, or to log in once through their portal to clear it.
-      Do not retry repeatedly: Cognito locks accounts after repeated failures.
+Production login **works** as of 2026-08-14. What the login response gives us,
+so it does not need to be asked for:
 
-      Combinations already tried against
-      `https://sv.acatha.io/amfphp/services/SIGNUM/API/v4/cognito/login`,
-      all returning `{"error":false,"message":"Login failed"}`:
-        - svasquez@mennonites.io / Mennonites123#
-        - svasquez@mennonites.io / Menonas4$$
-        - s.vasquez@mennonites.io / Menonas4$$
-        - s.vasquez / Menonas4$$
-      A deliberately wrong password returns the same message, so the response
-      carries no signal. Stop guessing and get confirmation from Acatha.
-- [ ] **`cliente.ref` (company UUID)** for MENNONITES → `ACATHA_PROD_COMPANY_UUID`
-- [ ] An item code from the production catalog → `ACATHA_PROD_ITEM_CODE`
-      (listable ourselves once login works)
-- [x] MENNONITES confirmed as the issuing entity (2026-08-13).
+| | |
+|---|---|
+| company codigo | `7564` |
+| NIT | `06230210241032` |
+| NRC | `3497080` |
+| nombre | MENNONITES SOCIEDAD ANONIMA DE CAPITAL VARIABLE |
+| nombre comercial | MENNONITES IO |
+| local | `13042` ("Principal") |
+
+`emisor.nit`, `emisor.nrc` and `emisor.nombre` are read from this at runtime, so
+no secrets are needed for them.
+
+Still blocked:
+- [ ] **The production catalog is empty (0 items).** A Pinklights product must be
+      created via `POST /inventario/items/save` before any sale can be made.
+      Valid values discovered for this company: `unidadv: 34` (UNIDAD),
+      `grupo: 0` (the only group, "N/A"). `/inventario/lineas/listar` returns
+      nothing, so `linea` needs confirming with Acatha.
+      → then set `ACATHA_PROD_ITEM_CODE` to the item's `barras`
+- [ ] **`cliente.ref` (company UUID)** for MENNONITES → `ACATHA_PROD_COMPANY_UUID`.
+      Sent on every Hacienda submission; not present in the login response.
+- [ ] **`codActividad` + exact `descActividad`** registered for MENNONITES.
+      62020/"Consultorías y gestión de servicios informáticos" belongs to the dev
+      company and will be rejected as NO CORRESPONDE A CONTRIBUYENTE.
+      → `ACATHA_PROD_COD_ACTIVIDAD`, `ACATHA_PROD_EMISOR_DESC_ACTIVIDAD`
+- [ ] **Registered address and phone** for MENNONITES
+      → `ACATHA_PROD_EMISOR_DEPARTAMENTO`, `_MUNICIPIO`, `_DIRECCION`, `_TELEFONO`
 - [ ] Ask them to rotate the secret key: it arrived in plain text.
 
 Notes discovered while validating:

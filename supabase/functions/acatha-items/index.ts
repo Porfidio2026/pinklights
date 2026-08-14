@@ -19,8 +19,95 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
+    // This function proxies calls with stored Acatha credentials, so it must not
+    // be reachable by every signed-in user. Admins only.
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    // Compare the role claim rather than the literal key: the CLI hands out a
+    // different key format than the function's env var holds, so a string
+    // comparison rejects a legitimate service-role caller.
+    const roleClaim = (() => {
+      try {
+        const p = token.split('.')[1];
+        return JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/'))).role;
+      } catch { return null; }
+    })();
+    const isServiceRole = roleClaim === 'service_role' || token === SUPABASE_SERVICE_ROLE_KEY;
+    if (!isServiceRole) {
+      const { data: { user } } = await supabase.auth.getUser(token);
+      const { data: admin } = user
+        ? await supabase.from('admin_users').select('id').eq('user_id', user.id).maybeSingle()
+        : { data: null };
+      if (!admin) return Response.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => ({}));
     const action = body.action || 'list';
+
+    // Full auth chain against explicitly supplied credentials, bypassing the
+    // cached session. Lets production be explored before ACATHA_ENV is switched,
+    // which would otherwise point live invoicing at the production company.
+    if (action === 'raw') {
+      const base = body.baseUrl;
+      const apiPath = body.apiPath || API_PATH;
+      const url = (p: string) => `${base}${apiPath}${p}`;
+      const h: Record<string, string> = {
+        'client-id': body.clientId,
+        'secret-key': body.secretKey,
+        'Content-Type': 'application/json',
+      };
+
+      const lr = await (await fetch(url('/cognito/login'), {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ AuthParameters: { user: body.user, pass: body.pass } }),
+      })).json();
+      const idToken = lr.auto?.token?.AuthenticationResult?.IdToken;
+      if (!idToken) return Response.json({ error: 'login failed', detail: lr.message }, { status: 502 });
+
+      const ar = await (await fetch(url('/login/autenticar'), {
+        method: 'POST', headers: { ...h, 'x-csrf-token': idToken },
+      })).json();
+      const company = ar.auto?.empresas?.[0];
+      if (!company) return Response.json({ error: 'no company', detail: ar.message }, { status: 502 });
+
+      await fetch(url('/sessions/deactivateAll?dispositivo=pc'), {
+        method: 'DELETE',
+        headers: { ...h, 'x-csrf-token': idToken, authorization: company.token },
+      });
+      const sessionUUID = crypto.randomUUID();
+      await fetch(url('/sessions/store'), {
+        method: 'POST',
+        headers: { ...h, 'x-csrf-token': idToken, authorization: company.token },
+        body: JSON.stringify({ infoRegistro: {
+          dispositivo: 'pc', identificadorSesion: sessionUUID,
+          empresa: parseInt(company.codigo), ip: '0.0.0.0',
+          navegador: 'Pinklights-API', sistemaOperativo: 'Linux',
+        } }),
+      });
+
+      const callHeaders = {
+        ...h, 'x-csrf-token': idToken,
+        authorization: company.token, 'Session-ID': sessionUUID,
+      };
+      const localCode = company.locales?.[0]?.codigo?.toString() || '';
+      const target = (body.path || '').replace('{local}', localCode);
+      const res = await fetch(url(target), {
+        method: body.method || 'GET',
+        headers: callHeaders,
+        ...(body.payload ? { body: JSON.stringify(body.payload) } : {}),
+      });
+      const text = await res.text();
+      let data: unknown;
+      try { data = JSON.parse(text); } catch { data = { _nonJson: true, body: text.slice(0, 400) }; }
+
+      return Response.json({
+        company: {
+          codigo: company.codigo, ruc: company.ruc, nrc: company.nrc,
+          nombre: company.nombre, comercial: company.comercial, localCode,
+        },
+        path: target, httpStatus: res.status, data,
+      });
+    }
 
     const login = await acathaLogin(supabase);
     if (!login.ok) {
