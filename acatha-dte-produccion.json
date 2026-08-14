@@ -1,0 +1,128 @@
+{
+  "endpoint": "POST https://sv.acatha.io:3000/facturacion-electronica/consumidor-final",
+  "request": {
+    "cliente": {
+      "ref": "26bfa08a-825c-11f1-8c60-02cb7608cd55"
+    },
+    "idEnvio": 1,
+    "consumidorFinal": {
+      "nit": "06230210241032",
+      "activo": true,
+      "dteJson": {
+        "emisor": {
+          "nit": "06230210241032",
+          "nrc": "3497080",
+          "correo": "svasquez@mennonites.io",
+          "nombre": "MENNONITES IO",
+          "telefono": "2222-2222",
+          "direccion": {
+            "municipio": "01",
+            "complemento": "SONSONATE",
+            "departamento": "06"
+          },
+          "codEstable": null,
+          "codActividad": "62090",
+          "codEstableMH": null,
+          "codPuntoVenta": null,
+          "descActividad": "Otras actividades de tecnología de la información y de servicios informáticos",
+          "codPuntoVentaMH": null,
+          "nombreComercial": "MENNONITES IO",
+          "tipoEstablecimiento": "01"
+        },
+        "resumen": {
+          "pagos": [
+            {
+              "plazo": null,
+              "codigo": "01",
+              "periodo": null,
+              "montoPago": 5,
+              "referencia": ""
+            }
+          ],
+          "ivaRete1": 0,
+          "subTotal": 5,
+          "totalIva": 0.58,
+          "tributos": null,
+          "reteRenta": 0,
+          "descuNoSuj": 0,
+          "saldoFavor": 0,
+          "totalDescu": 0,
+          "totalNoSuj": 0,
+          "totalPagar": 5,
+          "descuExenta": 0,
+          "totalExenta": 0,
+          "totalLetras": "CINCO 00/100 DOLARES",
+          "descuGravada": 0,
+          "totalGravada": 5,
+          "subTotalVentas": 5,
+          "totalNoGravado": 0,
+          "condicionOperacion": 1,
+          "numPagoElectronico": null,
+          "montoTotalOperacion": 5,
+          "porcentajeDescuento": 0
+        },
+        "apendice": null,
+        "receptor": null,
+        "extension": null,
+        "ventaTercero": null,
+        "identificacion": {
+          "fecEmi": "2026-08-14",
+          "horEmi": "19:35:11",
+          "tipoDte": "01",
+          "version": 1,
+          "ambiente": "01",
+          "tipoModelo": 1,
+          "tipoMoneda": "USD",
+          "motivoContin": null,
+          "numeroControl": "DTE-01-M001P101-000000000000005",
+          "tipoOperacion": 1,
+          "codigoGeneracion": "7D4FC64C-731F-4EF3-A526-04CC7E1E8B53",
+          "tipoContingencia": null
+        },
+        "cuerpoDocumento": [
+          {
+            "psv": 0,
+            "codigo": "PL-1DAY",
+            "ivaItem": 0.58,
+            "numItem": 1,
+            "cantidad": 1,
+            "tipoItem": 2,
+            "tributos": null,
+            "noGravado": 0,
+            "precioUni": 5,
+            "uniMedida": 99,
+            "codTributo": null,
+            "montoDescu": 0,
+            "ventaNoSuj": 0,
+            "descripcion": "1 Day Access",
+            "ventaExenta": 0,
+            "ventaGravada": 5,
+            "numeroDocumento": null
+          }
+        ],
+        "otrosDocumentos": null,
+        "documentoRelacionado": null
+      }
+    }
+  },
+  "respuesta": {
+    "body": {
+      "status": "error",
+      "message": {
+        "estado": "RECHAZADO",
+        "version": 2,
+        "ambiente": "01",
+        "codigoMsg": "802",
+        "versionApp": 2,
+        "clasificaMsg": "20",
+        "observaciones": [],
+        "selloRecibido": null,
+        "descripcionMsg": "Firma no válida",
+        "fhProcesamiento": "14/08/2026 13:35:12",
+        "codigoGeneracion": null
+      }
+    },
+    "error": "Error en la recepcion",
+    "status": 500
+  }
+}

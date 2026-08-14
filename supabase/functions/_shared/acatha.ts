@@ -167,7 +167,8 @@ export interface AcathaSession {
   companyId: string;     // Company code (e.g. "1202")
   companyRuc: string;    // Company tax ID
   companyNrc: string;    // Company NRC
-  companyName: string;   // Company commercial name
+  companyName: string;      // Trade name (nombre comercial)
+  companyLegalName: string; // Razon social as registered with Hacienda
   localCode: string;     // Establishment/local code
   // Emisor details Acatha already holds for the company. Reading them here beats
   // duplicating them into secrets, where they would silently go stale or, worse,
@@ -308,6 +309,7 @@ export async function acathaLogin(
         companyRuc: parsed?.companyRuc ?? parts[2] ?? '',
         companyNrc: parsed?.companyNrc ?? parts[3] ?? '',
         companyName: parsed?.companyName ?? parts[4] ?? '',
+        companyLegalName: parsed?.companyLegalName ?? parsed?.companyName ?? parts[4] ?? '',
         localCode: parsed?.localCode ?? parts[5] ?? '',
         companyUuid: parsed?.companyUuid ?? '',
         companyAddress: parsed?.companyAddress ?? '',
@@ -369,6 +371,7 @@ export async function acathaLogin(
     const companyRuc = company.ruc || '';
     const companyNrc = company.nrc || '';
     const companyName = company.comercial || company.nombre || '';
+    const companyLegalName = company.nombre || company.comercial || '';
     const localCode = company.locales?.[0]?.codigo?.toString() || '';
     const companyUuid = company.uuid || '';
     const companyAddress = company.direccion || company.locales?.[0]?.direccion || '';
@@ -422,7 +425,7 @@ export async function acathaLogin(
     const sessionData = JSON.stringify({
       companyToken, sessionUUID, companyRuc, companyNrc, companyName, localCode,
       companyUuid, companyAddress, companyPhone, companyEmail,
-      localCityCode, localProvinceCode,
+      companyLegalName, localCityCode, localProvinceCode,
       emisorDepartamento: geo.departamento, emisorMunicipio: geo.municipio,
     });
     await supabase.from('acatha_sessions').insert({
@@ -653,7 +656,10 @@ export async function createDTE(
         // rather than a code change.
         emisor: {
           nit: session.companyRuc, nrc: session.companyNrc,
-          nombre: session.companyName, codActividad,
+          // Hacienda registers the razon social; the trade name goes in
+          // nombreComercial. Sending the trade name as `nombre` risks a mismatch
+          // against the taxpayer record.
+          nombre: session.companyLegalName || session.companyName, codActividad,
           descActividad: optEnv('ACATHA_EMISOR_DESC_ACTIVIDAD', 'Servicios'),
           nombreComercial: session.companyName,
           tipoEstablecimiento: '01',
