@@ -12,12 +12,12 @@
         "emisor": {
           "nit": "06230210241032",
           "nrc": "3497080",
-          "correo": "svasquez@mennonites.io",
-          "nombre": "MENNONITES IO",
-          "telefono": "2222-2222",
+          "correo": "atencion@mennonites.io",
+          "nombre": "MENNONITES SOCIEDAD ANONIMA DE CAPITAL VARIABLE",
+          "telefono": "21248102",
           "direccion": {
-            "municipio": "01",
-            "complemento": "SONSONATE",
+            "municipio": "06",
+            "complemento": "CALLE ARTURO AMBROGI 125, SAN SALVADOR, EL SALVADOR",
             "departamento": "06"
           },
           "codEstable": null,
@@ -67,16 +67,16 @@
         "ventaTercero": null,
         "identificacion": {
           "fecEmi": "2026-08-14",
-          "horEmi": "19:35:11",
+          "horEmi": "19:36:30",
           "tipoDte": "01",
           "version": 1,
           "ambiente": "01",
           "tipoModelo": 1,
           "tipoMoneda": "USD",
           "motivoContin": null,
-          "numeroControl": "DTE-01-M001P101-000000000000005",
+          "numeroControl": "DTE-01-M001P101-000000000000006",
           "tipoOperacion": 1,
-          "codigoGeneracion": "7D4FC64C-731F-4EF3-A526-04CC7E1E8B53",
+          "codigoGeneracion": "4EE62183-199C-4A4A-A202-3A1A45C7E02B",
           "tipoContingencia": null
         },
         "cuerpoDocumento": [
@@ -105,7 +105,7 @@
       }
     }
   },
-  "respuesta": {
+  "respuestaHacienda": {
     "body": {
       "status": "error",
       "message": {
@@ -118,7 +118,7 @@
         "observaciones": [],
         "selloRecibido": null,
         "descripcionMsg": "Firma no válida",
-        "fhProcesamiento": "14/08/2026 13:35:12",
+        "fhProcesamiento": "14/08/2026 13:36:32",
         "codigoGeneracion": null
       }
     },
