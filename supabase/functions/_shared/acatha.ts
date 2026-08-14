@@ -176,6 +176,11 @@ export interface AcathaSession {
   companyAddress: string;
   companyPhone: string;
   companyEmail: string;
+  // Acatha's own geography codes for the establishment. Kept so the MH
+  // departamento/municipio can be resolved from the API rather than pinned in
+  // secrets, once Acatha confirms which field maps to which MH catalog.
+  localCityCode: string;      // locales[].ciucodigo, e.g. "505" = SAN SALVADOR
+  localProvinceCode: string;  // locales[].provinciaCodigo, e.g. "73"
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────
@@ -258,6 +263,8 @@ export async function acathaLogin(
         companyAddress: parsed?.companyAddress ?? '',
         companyPhone: parsed?.companyPhone ?? '',
         companyEmail: parsed?.companyEmail ?? '',
+        localCityCode: parsed?.localCityCode ?? '',
+        localProvinceCode: parsed?.localProvinceCode ?? '',
       },
     };
   }
@@ -315,6 +322,8 @@ export async function acathaLogin(
     const companyAddress = company.direccion || company.locales?.[0]?.direccion || '';
     const companyPhone = company.telefono || company.locales?.[0]?.telefono || '';
     const companyEmail = company.email || '';
+    const localCityCode = company.locales?.[0]?.ciucodigo?.toString() || '';
+    const localProvinceCode = company.locales?.[0]?.provinciaCodigo?.toString() || '';
     const authHeadersObj = { ...baseHeaders(), 'x-csrf-token': idToken, 'authorization': companyToken };
 
     // Step 4: Deactivate old sessions
@@ -351,6 +360,7 @@ export async function acathaLogin(
     const sessionData = JSON.stringify({
       companyToken, sessionUUID, companyRuc, companyNrc, companyName, localCode,
       companyUuid, companyAddress, companyPhone, companyEmail,
+      localCityCode, localProvinceCode,
     });
     await supabase.from('acatha_sessions').insert({
       token: idToken,
