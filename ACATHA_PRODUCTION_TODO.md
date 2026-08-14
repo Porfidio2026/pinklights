@@ -11,27 +11,26 @@ Everything below is what still stands between that and real emission.
 
 ---
 
-## 0. Current blocker (2026-08-14)
+## 0. Status: LIVE (2026-08-14)
 
-Hacienda rejects every submission from the MENNONITES production company with
-`codigoMsg 106 CREDENCIALES INVÁLIDAS`, in **both** ambiente `00` and `01`.
-Since it fails identically either way, this is not the ambiente: it is the
-company's own Hacienda credentials at Acatha.
+Production emission works end to end. First valid DTE:
 
-Everything on our side is validated against production:
-- the sale is created (`ventas/sv/ingresar` → Registro Satisfactorio)
-- the DTE is well-formed and reaches Hacienda
-- the PDF is generated and retrievable
-- emisor, item, totals and totalLetras are all correct
+| | |
+|---|---|
+| estado | PROCESADO (`codigoMsg 001`, RECIBIDO) |
+| ambiente | `01` — producción |
+| sello | `20263E0F10E8ACE94A2BB64E2D3153632EFFOALM` |
+| numeroControl | `DTE-01-M001P101-000000000000007` |
+| codigoGeneracion | `5B882EF7-9BEE-4D18-8D58-54C45ECA782F` |
 
-Their original mail said they would proceed with the "paso a producción ante
-Hacienda" *after* this validation, so that step is most likely still pending.
-Worth noting the company object returns `tipoAmbiente: 0`, and carries a
-certificate expiring 2031-07-16, so a certificate exists but the environment
-flag on their side says pruebas.
+All five Acatha steps succeed, including `ventas/registerAuth`, so the document
+is both stamped by Hacienda and registered as authorised in Acatha.
 
-Ask: are MENNONITES' Hacienda credentials loaded and active, and for which
-ambiente? Nothing else is outstanding.
+Getting here took, in order: the API path casing, the secret truncated at its
+`#`, an account activation, `extras` on registerAuth, the 31-character control
+number, `totalLetras`, the item catalog, `codActividad`, the departamento and
+municipio lookup, the company UUID, and finally a certificate/signing fix on
+Acatha's side.
 
 ## 1. Ask Acatha
 
