@@ -131,6 +131,15 @@ secrets — they follow automatically once production credentials are in place.
 
 ## 3b. DitoBanx (payment gateway)
 
+- [x] Production merchant credentials installed 2026-08-14
+      (`DITOBANX_MERCHANT_KEY` / `DITOBANX_MERCHANT_PASSWORD`). Validated against
+      the gateway before storing; a checkout session was created successfully
+      with the new pair both directly and through create-payment.
+- [ ] **Point the new merchant account's notification URL at**
+      `https://uptvbtjryzivhybegvfa.supabase.co/functions/v1/payment-callback`.
+      This is configured per merchant in DitoBanx's panel, so it does not carry
+      over from the previous account. Until it is set, payments will succeed and
+      credits will never be granted, because payment-callback is never called.
 - [ ] `DITOBANX_API_URL` resolves to `pay.ditobanx.com` — the **production**
       gateway, not a sandbox. Ask whether a test environment exists; today every
       test opens a real session and a completed one is a real charge.
