@@ -195,7 +195,7 @@ export interface AcathaSession {
  * serves /amfphp/services/... (lowercase). The wrong casing returns an HTML
  * 404 rather than a JSON error, so it fails in a confusing way.
  */
-function acathaUrl(path: string): string {
+export function acathaUrl(path: string): string {
   const base = env('ACATHA_BASE_URL'); // https://dev.acatha.com | https://sv.acatha.io
   const apiPath = optEnv('ACATHA_API_PATH', '/amfphp/Services/SIGNUM/API/v4');
   return `${base}${apiPath}${path}`;
@@ -215,7 +215,7 @@ function baseHeaders(): Record<string, string> {
 }
 
 /** Headers for authenticated API calls (after session is established) */
-function sessionHeaders(session: AcathaSession): Record<string, string> {
+export function sessionHeaders(session: AcathaSession): Record<string, string> {
   return {
     ...baseHeaders(),
     'x-csrf-token': session.token,

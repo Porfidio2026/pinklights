@@ -7,13 +7,16 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
-import { acathaLogin } from '../_shared/acatha.ts'
+import { acathaLogin, sessionHeaders, acathaUrl } from '../_shared/acatha.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Use the shared builder: composing the URL here from raw Deno.env.get ignores
+// ACATHA_ENV, which pointed these calls at the dev host while carrying a
+// production session and produced "verifique la autorizacion y ruc".
 const API_PATH = Deno.env.get('ACATHA_API_PATH') || '/amfphp/Services/SIGNUM/API/v4';
-const apiUrl = (path: string) => `${Deno.env.get('ACATHA_BASE_URL')}${API_PATH}${path}`;
+const apiUrl = acathaUrl;
 
 Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -115,14 +118,10 @@ Deno.serve(async (req) => {
     }
     const s = login.data;
 
-    const headers: Record<string, string> = {
-      'client-id': Deno.env.get('ACATHA_CLIENT_ID')!,
-      'secret-key': Deno.env.get('ACATHA_SECRET_KEY')!,
-      'Content-Type': 'application/json',
-      'x-csrf-token': s.token,
-      'authorization': s.companyToken,
-      'Session-ID': s.sessionId,
-    };
+    // Must come from the shared builder: building them here from raw
+    // Deno.env.get bypasses the ACATHA_ENV resolver, which sent dev keys
+    // alongside a production session and made every query return zero rows.
+    const headers = sessionHeaders(s);
 
     const session = {
       localCode: s.localCode,
