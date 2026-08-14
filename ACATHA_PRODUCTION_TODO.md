@@ -90,14 +90,18 @@ Still blocked:
       `ACATHA_PROD_EMISOR_DIRECCION` / `_TELEFONO` are not needed. MENNONITES:
       "CALLE ARTURO AMBROGI 125, SAN SALVADOR, EL SALVADOR", tel `21248102`,
       `atencion@mennonites.io`.
-- [ ] **MH `departamento` and `municipio` codes for San Salvador.** Still the only
-      hardcoded emisor fields, defaulting to `07`/`01` (Sonsonate, correct for the
-      dev company only). `/ciudades/cargar?pais=37` returns 22012 rows spanning
-      several countries with overlapping codes — Sonsonate city 435 carries
-      `CIU_CODORIGEN 03` while the accepted dev DTE uses departamento `07`, so the
-      mapping is not derivable from that endpoint. Ask Acatha for the two codes,
-      or which field maps to the MH catalogs.
-      → `ACATHA_PROD_EMISOR_DEPARTAMENTO`, `ACATHA_PROD_EMISOR_MUNICIPIO`
+- [x] MH `departamento` and `municipio` are resolved from the API at login
+      (2026-08-14), not configured. `ciudad/cargar` searches by name fragment,
+      not by code — `ciudad=505` returns nothing, `ciudad=san%20sal` returns the
+      rows — and each row carries both codes: `codigoProvinciaOrigen` is the
+      departamento and `codigoOrigen` the municipio, each padded to two
+      characters. The name search alone is ambiguous, since "san sal" also
+      matches SAN SALVADOR CENTRO/ESTE/OESTE (different municipios, same
+      departamento), so the row is pinned by the establishment's own city code.
+      MENNONITES sits in city 505 → `06`/`06`.
+      `ACATHA_PROD_EMISOR_DEPARTAMENTO` remains only as a fallback if the lookup
+      fails; the resolved value wins.
+
 - [ ] Ask them to rotate the secret key: it arrived in plain text.
 
 Notes discovered while validating:

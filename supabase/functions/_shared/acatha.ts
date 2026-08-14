@@ -181,6 +181,10 @@ export interface AcathaSession {
   // secrets, once Acatha confirms which field maps to which MH catalog.
   localCityCode: string;      // locales[].ciucodigo, e.g. "505" = SAN SALVADOR
   localProvinceCode: string;  // locales[].provinciaCodigo, e.g. "73"
+  // MH catalog codes for the establishment, resolved from ciudad/cargar at
+  // login. Empty if the lookup failed, in which case the env fallbacks apply.
+  emisorDepartamento: string;
+  emisorMunicipio: string;
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────
@@ -218,6 +222,52 @@ function sessionHeaders(session: AcathaSession): Record<string, string> {
     'authorization': session.companyToken,
     'Session-ID': session.sessionId,
   };
+}
+
+/**
+ * Resolve the MH departamento and municipio for an establishment.
+ *
+ * ciudad/cargar searches by name fragment, not by code, and returns both codes
+ * per city: codigoProvinciaOrigen is the departamento and codigoOrigen the
+ * municipio. Hacienda wants two characters, so single digits are padded.
+ *
+ * The name search is ambiguous on its own — "san sal" also matches SAN SALVADOR
+ * CENTRO/ESTE/OESTE, which are different municipios sharing one departamento —
+ * so the row is pinned by the establishment's own city code.
+ */
+async function resolveEmisorGeo(
+  cityCode: string,
+  cityName: string,
+  countryCode: string,
+  headers: Record<string, string>,
+): Promise<{ departamento: string; municipio: string }> {
+  const empty = { departamento: '', municipio: '' };
+  if (!cityCode || !cityName) return empty;
+
+  try {
+    const url = acathaUrl(
+      `/ciudad/cargar?page=1&limit=50&isPaged=true` +
+      `&ciudad=${encodeURIComponent(cityName.trim())}` +
+      `&paisCodigo=${encodeURIComponent(countryCode || '37')}`,
+    );
+    const data = await (await fetch(url, { headers })).json();
+    const rows = data?.auto?.auto ?? data?.auto ?? [];
+    const match = (Array.isArray(rows) ? rows : []).find(
+      (r: { codigo?: number }) => String(r.codigo) === String(cityCode),
+    );
+    if (!match) {
+      console.warn(`[Acatha] No city row matched code ${cityCode} for "${cityName}"`);
+      return empty;
+    }
+    const pad = (v: unknown) => String(v ?? '').padStart(2, '0');
+    return {
+      departamento: pad(match.codigoProvinciaOrigen),
+      municipio: pad(match.codigoOrigen),
+    };
+  } catch (err) {
+    console.error('[Acatha] Geo lookup failed:', err);
+    return empty;
+  }
 }
 
 // ── 1. Authentication ────────────────────────────────────────────────
@@ -265,6 +315,8 @@ export async function acathaLogin(
         companyEmail: parsed?.companyEmail ?? '',
         localCityCode: parsed?.localCityCode ?? '',
         localProvinceCode: parsed?.localProvinceCode ?? '',
+        emisorDepartamento: parsed?.emisorDepartamento ?? '',
+        emisorMunicipio: parsed?.emisorMunicipio ?? '',
       },
     };
   }
@@ -324,6 +376,8 @@ export async function acathaLogin(
     const companyEmail = company.email || '';
     const localCityCode = company.locales?.[0]?.ciucodigo?.toString() || '';
     const localProvinceCode = company.locales?.[0]?.provinciaCodigo?.toString() || '';
+    const localCityName = company.locales?.[0]?.ciudad?.toString() || '';
+    const localCountryCode = company.locales?.[0]?.paisCodigo?.toString() || '37';
     const authHeadersObj = { ...baseHeaders(), 'x-csrf-token': idToken, 'authorization': companyToken };
 
     // Step 4: Deactivate old sessions
@@ -353,7 +407,15 @@ export async function acathaLogin(
       return { ok: false, error: `Session store failed: ${storeData.message || 'unknown error'}` };
     }
 
-    console.log(`Acatha auth complete: company=${companyName}, id=${companyId}, session=${sessionUUID}`);
+    const geo = await resolveEmisorGeo(localCityCode, localCityName, localCountryCode, {
+      ...baseHeaders(), 'x-csrf-token': idToken,
+      authorization: companyToken, 'Session-ID': sessionUUID,
+    });
+
+    console.log(
+      `Acatha auth complete: company=${companyName}, id=${companyId}, ` +
+      `geo=${geo.departamento || '?'}/${geo.municipio || '?'}`,
+    );
 
     // Cache the session (IdToken valid 24h, cache for 12h)
     const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
@@ -361,6 +423,7 @@ export async function acathaLogin(
       companyToken, sessionUUID, companyRuc, companyNrc, companyName, localCode,
       companyUuid, companyAddress, companyPhone, companyEmail,
       localCityCode, localProvinceCode,
+      emisorDepartamento: geo.departamento, emisorMunicipio: geo.municipio,
     });
     await supabase.from('acatha_sessions').insert({
       token: idToken,
@@ -595,8 +658,8 @@ export async function createDTE(
           nombreComercial: session.companyName,
           tipoEstablecimiento: '01',
           direccion: {
-            departamento: optEnv('ACATHA_EMISOR_DEPARTAMENTO', '07'),
-            municipio: optEnv('ACATHA_EMISOR_MUNICIPIO', '01'),
+            departamento: session.emisorDepartamento || optEnv('ACATHA_EMISOR_DEPARTAMENTO', '07'),
+            municipio: session.emisorMunicipio || optEnv('ACATHA_EMISOR_MUNICIPIO', '01'),
             complemento: session.companyAddress || optEnv('ACATHA_EMISOR_DIRECCION', 'SONSONATE'),
           },
           // Session first: these come from Acatha for the company we are actually
