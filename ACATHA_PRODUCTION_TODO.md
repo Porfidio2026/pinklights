@@ -80,14 +80,24 @@ Still blocked:
       "30 Days Access" — all tipo Servicio, unidad UNIDAD, IVA code 3.
       Codes live in `credit_packages.acatha_item_code`, not a secret, so each
       package invoices against its own catalog item.
-- [ ] **`cliente.ref` (company UUID)** for MENNONITES → `ACATHA_PROD_COMPANY_UUID`.
-      Sent on every Hacienda submission; not present in the login response.
-- [ ] **`codActividad` + exact `descActividad`** registered for MENNONITES.
-      62020/"Consultorías y gestión de servicios informáticos" belongs to the dev
-      company and will be rejected as NO CORRESPONDE A CONTRIBUYENTE.
-      → `ACATHA_PROD_COD_ACTIVIDAD`, `ACATHA_PROD_EMISOR_DESC_ACTIVIDAD`
-- [ ] **Registered address and phone** for MENNONITES
-      → `ACATHA_PROD_EMISOR_DEPARTAMENTO`, `_MUNICIPIO`, `_DIRECCION`, `_TELEFONO`
+- [x] `cliente.ref` is read from the login response (`empresa.uuid`), not a
+      secret. MENNONITES = `26bfa08a-825c-11f1-8c60-02cb7608cd55`.
+- [x] `ACATHA_PROD_COD_ACTIVIDAD` = `62090` (confirmed 2026-08-14), with
+      `ACATHA_PROD_EMISOR_DESC_ACTIVIDAD` = "Otras actividades de tecnología de
+      la información y de servicios informáticos". Worth confirming the exact
+      wording with Acatha, since the description is validated too.
+- [x] Address, phone and email are read from the login response, so
+      `ACATHA_PROD_EMISOR_DIRECCION` / `_TELEFONO` are not needed. MENNONITES:
+      "CALLE ARTURO AMBROGI 125, SAN SALVADOR, EL SALVADOR", tel `21248102`,
+      `atencion@mennonites.io`.
+- [ ] **MH `departamento` and `municipio` codes for San Salvador.** Still the only
+      hardcoded emisor fields, defaulting to `07`/`01` (Sonsonate, correct for the
+      dev company only). `/ciudades/cargar?pais=37` returns 22012 rows spanning
+      several countries with overlapping codes — Sonsonate city 435 carries
+      `CIU_CODORIGEN 03` while the accepted dev DTE uses departamento `07`, so the
+      mapping is not derivable from that endpoint. Ask Acatha for the two codes,
+      or which field maps to the MH catalogs.
+      → `ACATHA_PROD_EMISOR_DEPARTAMENTO`, `ACATHA_PROD_EMISOR_MUNICIPIO`
 - [ ] Ask them to rotate the secret key: it arrived in plain text.
 
 Notes discovered while validating:

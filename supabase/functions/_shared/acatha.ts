@@ -169,6 +169,13 @@ export interface AcathaSession {
   companyNrc: string;    // Company NRC
   companyName: string;   // Company commercial name
   localCode: string;     // Establishment/local code
+  // Emisor details Acatha already holds for the company. Reading them here beats
+  // duplicating them into secrets, where they would silently go stale or, worse,
+  // carry a dev value into production.
+  companyUuid: string;   // `cliente.ref` on every Hacienda submission
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail: string;
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────
@@ -229,19 +236,28 @@ export async function acathaLogin(
 
   if (cached) {
     console.log('Using cached Acatha session');
-    // session_id stores: companyToken|sessionUUID|ruc|nrc|companyName|localCode
-    const parts = (cached.session_id || '').split('|');
+    // session_id holds JSON. Rows written before that change hold a pipe-joined
+    // string, so fall back rather than break on a session cached mid-deploy.
+    const raw = cached.session_id || '';
+    let parsed: Record<string, string> | null = null;
+    try { parsed = JSON.parse(raw); } catch { parsed = null; }
+    const parts = raw.split('|');
+
     return {
       ok: true,
       data: {
         token: cached.token,
-        companyToken: parts[0] || '',
-        sessionId: parts[1] || '',
+        companyToken: parsed?.companyToken ?? parts[0] ?? '',
+        sessionId: parsed?.sessionUUID ?? parts[1] ?? '',
         companyId: cached.company_id,
-        companyRuc: parts[2] || '',
-        companyNrc: parts[3] || '',
-        companyName: parts[4] || '',
-        localCode: parts[5] || '',
+        companyRuc: parsed?.companyRuc ?? parts[2] ?? '',
+        companyNrc: parsed?.companyNrc ?? parts[3] ?? '',
+        companyName: parsed?.companyName ?? parts[4] ?? '',
+        localCode: parsed?.localCode ?? parts[5] ?? '',
+        companyUuid: parsed?.companyUuid ?? '',
+        companyAddress: parsed?.companyAddress ?? '',
+        companyPhone: parsed?.companyPhone ?? '',
+        companyEmail: parsed?.companyEmail ?? '',
       },
     };
   }
@@ -295,6 +311,10 @@ export async function acathaLogin(
     const companyNrc = company.nrc || '';
     const companyName = company.comercial || company.nombre || '';
     const localCode = company.locales?.[0]?.codigo?.toString() || '';
+    const companyUuid = company.uuid || '';
+    const companyAddress = company.direccion || company.locales?.[0]?.direccion || '';
+    const companyPhone = company.telefono || company.locales?.[0]?.telefono || '';
+    const companyEmail = company.email || '';
     const authHeadersObj = { ...baseHeaders(), 'x-csrf-token': idToken, 'authorization': companyToken };
 
     // Step 4: Deactivate old sessions
@@ -328,7 +348,10 @@ export async function acathaLogin(
 
     // Cache the session (IdToken valid 24h, cache for 12h)
     const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
-    const sessionData = [companyToken, sessionUUID, companyRuc, companyNrc, companyName, localCode].join('|');
+    const sessionData = JSON.stringify({
+      companyToken, sessionUUID, companyRuc, companyNrc, companyName, localCode,
+      companyUuid, companyAddress, companyPhone, companyEmail,
+    });
     await supabase.from('acatha_sessions').insert({
       token: idToken,
       session_id: sessionData,
@@ -564,10 +587,13 @@ export async function createDTE(
           direccion: {
             departamento: optEnv('ACATHA_EMISOR_DEPARTAMENTO', '07'),
             municipio: optEnv('ACATHA_EMISOR_MUNICIPIO', '01'),
-            complemento: optEnv('ACATHA_EMISOR_DIRECCION', 'SONSONATE'),
+            complemento: session.companyAddress || optEnv('ACATHA_EMISOR_DIRECCION', 'SONSONATE'),
           },
-          telefono: optEnv('ACATHA_EMISOR_TELEFONO', ''),
-          correo: env('ACATHA_USER'),
+          // Session first: these come from Acatha for the company we are actually
+          // authenticated as, so they cannot go stale or carry a dev value into
+          // production. Env is only a fallback for what the session lacks.
+          telefono: session.companyPhone || optEnv('ACATHA_EMISOR_TELEFONO', ''),
+          correo: session.companyEmail || env('ACATHA_USER'),
           codEstableMH: null, codEstable: null, codPuntoVentaMH: null, codPuntoVenta: null,
         },
         receptor: null,
@@ -599,7 +625,7 @@ export async function createDTE(
 
       const client = getHaciendaClient();
       const haciendaBody = {
-        cliente: { ref: optEnv('ACATHA_COMPANY_UUID', '') },
+        cliente: { ref: session.companyUuid || optEnv('ACATHA_COMPANY_UUID', '') },
         idEnvio: 1,
         consumidorFinal: { nit: session.companyRuc, activo: true, dteJson },
       };
