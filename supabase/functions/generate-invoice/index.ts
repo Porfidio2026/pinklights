@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
 import { acathaLogin, createDTE } from '../_shared/acatha.ts'
-import { generateInvoicePdf } from '../_shared/invoice-pdf.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -133,6 +132,7 @@ Deno.serve(async (req) => {
     let dteId = '';
     let rawResponse: Record<string, unknown> = {};
     let acathaError = '';
+    let acathaPdfUrl: string | null = null;
 
     try {
       const loginResult = await acathaLogin(supabase);
@@ -152,6 +152,7 @@ Deno.serve(async (req) => {
           controlNumber = dteResult.data.controlNumber;
           generationCode = dteResult.data.generationCode;
           selloRecibido = dteResult.data.selloRecibido;
+          acathaPdfUrl = dteResult.data.pdfUrl;
           // Store what Hacienda actually received, plus its reply. Required for
           // audit and the only way to reconstruct a rejected document.
           rawResponse = {
@@ -193,28 +194,43 @@ Deno.serve(async (req) => {
     if (!dteNumber) dteNumber = `INV-${invoiceId.substring(0, 8).toUpperCase()}`;
     if (!controlNumber) controlNumber = dteNumber;
 
-    // ── Step 2: Generate PDF and store in Supabase Storage ──
-    const { pdfUrl } = await generateInvoicePdf(supabase, {
-      invoiceId,
-      dteNumber,
-      controlNumber,
-      generationCode,
-      selloRecibido: selloRecibido || undefined,
-      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-      customerName,
-      customerEmail: userEmail || undefined,
-      items: [{ description, quantity: 1, unitPrice: amountDollars, total: amountDollars }],
-      subtotal: amountDollars,
-      ivaRate,
-      ivaAmount,
-      total: totalPagar,
-      currency: session.currency || 'USD',
-      companyName: 'Pinklights',
-      companyRuc: '',
-      companyNrc: '',
-    });
+    // ── Step 2: Store Acatha's RIDE ──
+    //
+    // We no longer draw our own invoice. That PDF was not a RIDE: it named
+    // Pinklights as the emisor with empty NIT and NRC, when the legal emisor is
+    // the Acatha company, and Hacienda prescribes what a RIDE must show.
+    //
+    // Acatha's document is copied into our bucket rather than linked directly,
+    // so the customer's link keeps working if Acatha reorganises its file paths.
+    // An invoice is a record people may need years later.
+    let pdfUrl: string | null = acathaPdfUrl;
 
-    console.log(`PDF generated and stored: ${pdfUrl}`);
+    if (acathaPdfUrl) {
+      try {
+        const res = await fetch(acathaPdfUrl);
+        const contentType = res.headers.get('content-type') || '';
+
+        if (res.ok && contentType.includes('pdf')) {
+          const bytes = new Uint8Array(await res.arrayBuffer());
+          const path = `invoices/${invoiceId}.pdf`;
+          const { error: uploadError } = await supabase.storage
+            .from('invoices')
+            .upload(path, bytes, { contentType: 'application/pdf', upsert: true });
+
+          if (uploadError) {
+            console.error('Failed to store RIDE, linking Acatha directly:', uploadError.message);
+          } else {
+            pdfUrl = supabase.storage.from('invoices').getPublicUrl(path).data.publicUrl;
+          }
+        } else {
+          console.error(`RIDE fetch returned ${res.status} ${contentType}; linking Acatha directly`);
+        }
+      } catch (err) {
+        console.error('RIDE fetch failed, linking Acatha directly:', err);
+      }
+    }
+
+    console.log(`Invoice PDF: ${pdfUrl ?? 'none'}`);
 
     // ── Step 3: Update invoice record ──
     await supabase

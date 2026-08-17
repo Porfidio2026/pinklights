@@ -822,10 +822,13 @@ export async function createDTE(
       const filesRes = await fetch(acathaUrl(`/ventas/impresion?claveacceso=${generationCode}`), { headers });
       const filesData = await filesRes.json();
       record('5. ventas/impresion', acathaUrl(`/ventas/impresion?claveacceso=${generationCode}`), null, filesData);
-      if (filesData.auto?.url) {
-        pdfUrl = filesData.auto.url;
-      } else if (filesData.auto?.pdf) {
+      // auto.pdf is the direct file and serves application/pdf. auto.url points
+      // at edocs/print.php, which returns Acatha's marketing site, so it is only
+      // a fallback.
+      if (filesData.auto?.pdf) {
         pdfUrl = `${env('ACATHA_BASE_URL')}${filesData.auto.pdf}`;
+      } else if (filesData.auto?.url) {
+        pdfUrl = filesData.auto.url;
       }
       console.log(`[Acatha] PDF URL: ${pdfUrl || 'none'}`);
     } catch (pdfErr) {
@@ -875,11 +878,12 @@ export async function getDTEPdf(
     );
     const filesData = await filesRes.json();
 
-    if (filesData.auto?.url) {
-      return { ok: true, data: { pdfUrl: filesData.auto.url } };
-    }
+    // Same ordering as createDTE: auto.pdf is the real file, auto.url is not.
     if (filesData.auto?.pdf) {
       return { ok: true, data: { pdfUrl: `${env('ACATHA_BASE_URL')}${filesData.auto.pdf}` } };
+    }
+    if (filesData.auto?.url) {
+      return { ok: true, data: { pdfUrl: filesData.auto.url } };
     }
 
     return { ok: false, error: 'PDF URL not found' };
